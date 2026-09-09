@@ -1,16 +1,36 @@
 name: Release
 
-# Un tag vN.N.N pubblica la release con i PDF di esempio e i pacchetti
-# installabili. La versione del tag deve coincidere con quella in typst.toml.
+# L'unico workflow del progetto, e parte solo sui tag vN.N.N.
+# `workflow_dispatch` serve per una prova manuale: compila e allega i PDF alla
+# build, ma non pubblica nessuna release.
 on:
   push:
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  # typst.toml dichiara `compiler = "0.13.1"`: se con quella versione il tema
+  # non compila la dichiarazione è falsa, e la release non deve partire.
+  compatibilita:
+    name: Typst 0.13.1 (minimo dichiarato)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Installa Typst 0.13.1
+        run: |
+          curl -fsSL "https://github.com/typst/typst/releases/download/v0.13.1/typst-x86_64-unknown-linux-musl.tar.xz" | tar -xJ
+          echo "$PWD/typst-x86_64-unknown-linux-musl" >> "$GITHUB_PATH"
+
+      - name: Compila i demo e impacchetta
+        run: ./scripts/build-release.sh
+
   release:
+    name: Release
+    needs: compatibilita
     runs-on: ubuntu-latest
     env:
       TYPST_VERSION: "0.15.1"
@@ -23,6 +43,7 @@ jobs:
           echo "$PWD/typst-x86_64-unknown-linux-musl" >> "$GITHUB_PATH"
 
       - name: Il tag deve coincidere con la versione in typst.toml
+        if: github.ref_type == 'tag'
         run: |
           TAG="${GITHUB_REF_NAME#v}"
           MANIFEST="$(grep -m1 '^version' typst.toml | cut -d'"' -f2)"
@@ -31,10 +52,20 @@ jobs:
             exit 1
           fi
 
+      # La versione la prende da typst.toml, che il passo qui sopra ha già
+      # verificato essere quella del tag.
       - name: Compila i demo e impacchetta
-        run: ./scripts/build-release.sh "${GITHUB_REF_NAME#v}"
+        run: ./scripts/build-release.sh
+
+      - name: Allega i PDF alla build
+        uses: actions/upload-artifact@v7
+        with:
+          name: pdf-di-esempio
+          path: dist/*.pdf
+          retention-days: 14
 
       - name: Pubblica la release
+        if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

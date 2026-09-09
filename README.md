@@ -316,7 +316,7 @@ Most of them are **elements**: they go inside an ordinary slide, under a
 uniud-gray` gives the outlined variant on white, and any other `fill`/`ink` pair
 works — `output-box` is just the inverted one.
 
-```typst
+````typst
 == Stabilità
 
 #side-by-side[
@@ -338,12 +338,12 @@ def merge_sort(a):
     ...
 ```
 ]
-```
+````
 
 Text that has to *flow* from one column into the next is Typst's own
 `#columns(2)[...]`; `side-by-side` is for independent blocks.
 
-Three more are whole slides, called explicitly:
+Four more are whole slides, called explicitly:
 
 | slide | what it is |
 | ----------------------------------- | ------------------------------------------- |
@@ -352,7 +352,7 @@ Three more are whole slides, called explicitly:
 | `#references-slide(title: .., "refs.bib", style: "ieee")` | bibliography; extra arguments go straight to Typst's `bibliography`, `cols: 2` splits a long list |
 | `#wide-slide(title: ..)[..]`        | content area from the first to the last column, for code, tables and wide diagrams |
 
-These three take their own `title`, because they are called explicitly rather
+These four take their own `title`, because they are called explicitly rather
 than produced by a `== Heading`. The agenda and the bibliography sit where the
 rest of the text sits — the corporate measure, or the whole width in a `wide`
 deck; `column` and `span` override that per slide.
@@ -445,12 +445,22 @@ takes it from there:
 ```
 
 It refuses to run on a dirty tree or on a tag that already exists, rewrites the
-version in `typst.toml`, in the README and in `template/main.typ`, checks that no
-occurrence of the old one is left behind, opens a `CHANGELOG.md` entry, rebuilds
-the demos and refreshes the versioned PDFs in the repository, then shows the diff
-and asks before committing, tagging `vX.Y.Z` and pushing. The GitHub release
-itself — example PDFs, both zips, thumbnail — is built by `release.yml` from the
-tag, so the tag is the only thing that has to be pushed.
+version in `typst.toml`, in the README and in `template/main.typ`, and checks that
+no occurrence of the old one is left behind. Then it writes the `CHANGELOG.md`
+entry: the commits since the last tag go to a command-line LLM — `claude -p`, or
+whatever `RELEASE_CHANGELOG_CMD` names — and the draft opens in `$EDITOR` for
+review, the way a commit message does; lines starting with `#` are dropped, and an
+empty file cancels the release. `--no-llm` skips the draft (the raw commit list is
+used instead), `--no-edit` skips the editor, `--yes` skips both. Finally it
+rebuilds the demos, refreshes the versioned PDFs in the repository, shows the diff
+and asks before committing, tagging `vX.Y.Z` and pushing.
+
+`release.yml` is the only workflow and it runs on `vX.Y.Z` tags only — nothing is
+built on an ordinary push. It compiles the demos with Typst 0.13.1 first, the
+minimum `typst.toml` declares, then builds and publishes the release with 0.15.1:
+example PDFs, both zips, thumbnail. `workflow_dispatch` runs the same build by
+hand without publishing anything, which is the way to check CI without cutting a
+release.
 
 ## Publishing to Typst Universe
 
