@@ -6,11 +6,6 @@ Claude outputs/
 
 dist/
 
-# PDF: i demo sono versionati perché sono il riferimento visivo del tema,
-# tutto il resto è output di compilazione
+# I PDF sono output di compilazione: quelli dei demo li costruisce la CI e
+# finiscono fra gli allegati della release, non nel repository.
 *.pdf
-!demo.pdf
-!demo-01.pdf
-!demo-auto-sections.pdf
-!demo-teaching.pdf
-!demo-teaching-wide.pdf

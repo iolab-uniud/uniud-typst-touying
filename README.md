@@ -40,15 +40,15 @@ unzip it into Typst's package directory (`typst info` prints yours):
 
 ```sh
 # macOS
-unzip uniud-touying-0.1.1-pacchetto-locale.zip \
+unzip uniud-touying-0.1.0-pacchetto-locale.zip \
   -d "$HOME/Library/Application Support/typst/packages/local"
 
-typst init @local/uniud-touying:0.1.1 mia-lezione
+typst init @local/uniud-touying:0.1.0 mia-lezione
 cd mia-lezione && typst watch --font-path fonts main.typ
 ```
 
 `typst init` scaffolds a project that already carries the fonts, so it compiles
-the same everywhere. In any other document: `#import "@local/uniud-touying:0.1.1": *`.
+the same everywhere. In any other document: `#import "@local/uniud-touying:0.1.0": *`.
 
 **As a ready-made project** — installs nothing, and it is the way to work on
 typst.app, which supports neither local packages nor system fonts: unzip
@@ -402,6 +402,10 @@ captions styled and unnumbered (`set figure(numbering: "1")` restores numbers).
 
 ## Demos
 
+The rendered PDFs are attached to every
+[release](https://github.com/iolab-uniud/uniud-typst-touying/releases) and to
+each CI run; the repository keeps only the sources.
+
 - `demo.typ` — one slide per corporate archetype, plus the multiline and
   two-digit-number stress cases. The same suite renders in either master and at
   any aspect ratio:
@@ -451,9 +455,13 @@ entry: the commits since the last tag go to a command-line LLM — `claude -p`, 
 whatever `RELEASE_CHANGELOG_CMD` names — and the draft opens in `$EDITOR` for
 review, the way a commit message does; lines starting with `#` are dropped, and an
 empty file cancels the release. `--no-llm` skips the draft (the raw commit list is
-used instead), `--no-edit` skips the editor, `--yes` skips both. Finally it
-rebuilds the demos, refreshes the versioned PDFs in the repository, shows the diff
-and asks before committing, tagging `vX.Y.Z` and pushing.
+used instead), `--no-edit` skips the editor, `--yes` skips both. Finally it runs
+the full build as a check — a broken layout stops the release right there — then
+shows the diff and asks before committing, tagging `vX.Y.Z` and pushing.
+
+No PDF is committed: the rendered demos are build output, and the copies that
+count are the ones CI rebuilds from the tag and attaches to the release, so
+they always match the tagged source. `dist/` is ignored, and so is every `.pdf`.
 
 `release.yml` is the only workflow and it runs on `vX.Y.Z` tags only — nothing is
 built on an ordinary push. It compiles the demos with Typst 0.13.1 first, the

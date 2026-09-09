@@ -252,20 +252,16 @@ echo
 echo "Compilazione dei demo e dei pacchetti..."
 ./scripts/build-release.sh "$NEW_VERSION"
 
+# La build qui serve come verifica: se un layout si rompe la release non parte.
+# I PDF pubblicati sono però quelli che ricostruisce la CI dal tag, non questi.
 for f in \
     "dist/uniud-touying-${NEW_VERSION}-pacchetto-locale.zip" \
     "dist/uniud-touying-${NEW_VERSION}-progetto.zip" \
-    dist/thumbnail.png
+    dist/thumbnail.png \
+    dist/demo.pdf dist/demo-01.pdf dist/demo-auto-sections.pdf \
+    dist/demo-teaching.pdf dist/demo-teaching-wide.pdf
 do
     [[ -s "$f" ]] || die "la build non ha prodotto $f"
-done
-
-# I demo versionati sono il riferimento visivo del tema: si aggiornano a ogni
-# release, gli altri PDF restano solo fra gli allegati.
-DEMO_PDF=(demo.pdf demo-01.pdf demo-auto-sections.pdf demo-teaching.pdf demo-teaching-wide.pdf)
-for pdf in "${DEMO_PDF[@]}"; do
-    [[ -s "dist/$pdf" ]] || die "la build non ha prodotto dist/$pdf"
-    cp "dist/$pdf" "$pdf"
 done
 
 # --- conferma ---------------------------------------------------------------
@@ -291,7 +287,7 @@ fi
 
 # --- commit, tag, push ------------------------------------------------------
 
-git add typst.toml CHANGELOG.md "${DEMO_PDF[@]}"
+git add typst.toml CHANGELOG.md
 for f in README.md GUIDA.md template/main.typ; do
     [[ -f "$f" ]] && git add "$f"
 done
