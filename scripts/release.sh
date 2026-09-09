@@ -113,6 +113,19 @@ fi
 
 git fetch --tags --prune origin
 
+# typst.toml deve essere almeno all'altezza dell'ultimo tag: se è più indietro
+# qualcuno ha sovrascritto il file con una copia vecchia, e il calcolo della
+# nuova versione partirebbe dal numero sbagliato.
+ULTIMO_TAG="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' | sed 's/^v//' \
+              | sort -V | tail -1)"
+if [[ -n "$ULTIMO_TAG" && "$ULTIMO_TAG" != "$OLD_VERSION" ]]; then
+    PIU_ALTA="$(printf '%s\n%s\n' "$ULTIMO_TAG" "$OLD_VERSION" | sort -V | tail -1)"
+    if [[ "$PIU_ALTA" != "$OLD_VERSION" ]]; then
+        die "typst.toml dichiara $OLD_VERSION ma l'ultimo tag è v$ULTIMO_TAG:" \
+            "allinea la versione nel manifest prima di procedere"
+    fi
+fi
+
 if git rev-parse -q --verify "refs/tags/$NEW_TAG" >/dev/null; then
     die "il tag locale '$NEW_TAG' esiste già"
 fi
