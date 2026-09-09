@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1 - 2026-09-09
+
+- release.sh: garantita la possibilità di rivedere/modificare nell'editor anche una voce di changelog già preparata prima di confermare la release
+- fixed pubblicazione di pages
+
 ## 0.3.0 - 2026-09-09
 
 Due comportamenti di default cambiano, e si vedono nei mazzi già scritti: il
