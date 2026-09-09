@@ -4,7 +4,7 @@
 # Lo usano sia la CI sia chi vuole provare una release in locale:
 #
 #   ./scripts/build-release.sh            # versione presa da typst.toml
-#   ./scripts/build-release.sh 0.2.0      # versione esplicita
+#   ./scripts/build-release.sh X.Y.Z      # versione esplicita
 #
 # Risultato in dist/:
 #   - i PDF di tutti gli esempi, in tutte le varianti
