@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["markdown>=3.5"]
+# ///
 """Costruisce il sito degli esempi pubblicato su GitHub Pages.
 
     ./scripts/build-site.py [--version X.Y.Z] [--out site] [--dist dist]
@@ -10,7 +14,9 @@ Mette insieme tre cose:
   readme.html  README.md, il riferimento tecnico
 
 I PDF li prende da `dist/`, quindi va lanciato dopo `scripts/build-release.sh`.
-Serve il modulo `markdown` (pip install markdown).
+Le dipendenze sono dichiarate qui sopra secondo PEP 723: eseguendolo con uv
+(`uv run scripts/build-site.py`, o direttamente `./scripts/build-site.py`)
+l'ambiente se lo prepara da solo, senza installare niente nel sistema.
 """
 
 import argparse
@@ -23,7 +29,8 @@ import sys
 try:
     import markdown
 except ImportError:  # pragma: no cover
-    sys.exit("serve il modulo python 'markdown': pip install markdown")
+    sys.exit("manca il modulo 'markdown': esegui lo script con "
+             "`uv run scripts/build-site.py`")
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 

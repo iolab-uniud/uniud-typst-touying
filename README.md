@@ -480,8 +480,10 @@ shows the current version.
 built on an ordinary push. It compiles the examples with Typst 0.13.1 first, the
 minimum `typst.toml` declares, then builds and publishes the release with 0.15.1:
 example PDFs, both zips, thumbnail — then builds the site with
-`scripts/build-site.py` (index, guide, technical reference, PDFs; it needs the
-`markdown` module) and deploys it to Pages.
+`scripts/build-site.py` (index, guide, technical reference, PDFs) and deploys it
+to Pages. That script declares its own dependencies inline (PEP 723), so `uv run
+scripts/build-site.py` — or just `./scripts/build-site.py` — prepares the
+environment on the fly and installs nothing system-wide.
 `workflow_dispatch` runs the same build by hand without publishing anything,
 which is the way to check CI without cutting a release. Pages has to be enabled
 once in the repository settings, with **Source: GitHub Actions**.

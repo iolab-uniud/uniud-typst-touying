@@ -77,12 +77,18 @@ jobs:
       # Il sito: indice con la guida sezione per sezione, la guida e il
       # riferimento tecnico in HTML, i PDF sfogliabili nel browser. Viene
       # sostituito a ogni release, quindi mostra sempre l'ultima.
+      - name: Installa uv
+        if: github.ref_type == 'tag'
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # Le dipendenze dello script sono dichiarate nello script stesso
+      # (PEP 723): uv prepara l'ambiente al volo.
       - name: Costruisci il sito
         if: github.ref_type == 'tag'
         run: |
-          python3 -m venv .venv
-          .venv/bin/pip install --quiet markdown
-          .venv/bin/python scripts/build-site.py \
+          uv run scripts/build-site.py \
             --version "${GITHUB_REF_NAME#v}" --out site
 
       - name: Prepara l'artifact per le pagine
