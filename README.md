@@ -40,15 +40,15 @@ unzip it into Typst's package directory (`typst info` prints yours):
 
 ```sh
 # macOS
-unzip uniud-touying-0.1.2-pacchetto-locale.zip \
+unzip uniud-touying-0.1.3-pacchetto-locale.zip \
   -d "$HOME/Library/Application Support/typst/packages/local"
 
-typst init @local/uniud-touying:0.1.2 mia-lezione
+typst init @local/uniud-touying:0.1.3 mia-lezione
 cd mia-lezione && typst watch --font-path fonts main.typ
 ```
 
 `typst init` scaffolds a project that already carries the fonts, so it compiles
-the same everywhere. In any other document: `#import "@local/uniud-touying:0.1.2": *`.
+the same everywhere. In any other document: `#import "@local/uniud-touying:0.1.3": *`.
 
 **As a ready-made project** — installs nothing, and it is the way to work on
 typst.app, which supports neither local packages nor system fonts: unzip

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3 - 2026-09-09
+
+- Aggiunto supporto per la creazione di pagine dedicate nelle presentazioni.
+- Riorganizzati i file demo in una cartella `examples/` con esempi rinominati e più chiari.
+- Pubblicati i PDF di esempio su GitHub Pages e allegati automaticamente alle release.
+
 ## 0.1.2 - 2026-09-09
 
 - Rimossi i PDF di esempio dal repository, ora generati come artifact della CI invece che versionati.
