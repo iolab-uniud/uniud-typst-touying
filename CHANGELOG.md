@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0 - 2026-09-09
+
+- Aggiunta l'enfasi incrementale per evidenziare progressivamente il contenuto delle diapositive.
+- Aggiunte le liste a fuoco, che rivelano e mettono in risalto un elemento alla volta.
+- Aggiunto il supporto per la presentazione di codice passo per passo.
+- Aggiunta la generazione della modalità handout per la stampa/distribuzione delle slide.
+- Aggiunto il titolo breve nelle diapositive ricorrenti (es. intestazioni/piè di pagina) per un riferimento più leggibile.
+
 ## 0.1.3 - 2026-09-09
 
 - Aggiunto supporto per la creazione di pagine dedicate nelle presentazioni.
