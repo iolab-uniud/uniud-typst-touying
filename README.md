@@ -260,9 +260,12 @@ Letterhead data goes to the theme through `letterhead`, ignored in slide mode:
 
 The department mark is not an artwork file: it is the seal plus the acronym set
 in type, the way the official model and the `uniudletter` LaTeX package build
-it. The manual asks for Gotham; the default is Work Sans, which the manual
-itself prescribes as the office substitute, and which raises no missing-font
-warning. With Gotham installed, pass `display-font: ("Gotham", "Work Sans")`.
+it, and so is the UNI/UD wordmark on continuation sheets. The two share family
+and weight, both Gotham Bold in the manual. The default is Work Sans SemiBold —
+Work Sans is the office substitute the manual itself prescribes, and listing
+Gotham by default would raise a missing-font warning for everyone without it.
+With Gotham installed, pass `display-font: ("Gotham", "Work Sans")` and
+`display-weight: "bold"`.
 
 Sheet geometry lives in `uniud-paper()` and the type scale in
 `uniud-paper-type()`, the document counterparts of `uniud-layout()` and

@@ -702,10 +702,21 @@ slide non ha effetto:
 
 Il marchio di dipartimento non è un file: è il sigillo più l'acronimo composto
 tipograficamente, come nel modello ufficiale e nel pacchetto LaTeX
-`uniudletter`. Il manuale vuole Gotham; il default è Work Sans, che il manuale
-stesso prescrive come sostituto d'ufficio (p. 045) e che non fa emettere a
-Typst avvisi di font mancante. Chi ha Gotham installato passa
-`display-font: ("Gotham", "Work Sans")`.
+`uniudletter`. Lo stesso vale per il wordmark UNI/UD del «segue foglio»: i due
+marchi condividono carattere e peso, che il manuale vuole entrambi in **Gotham
+Bold**.
+
+Il default è Work Sans SemiBold — Work Sans è il sostituto d'ufficio che
+prescrive il manuale stesso (p. 045), e metterci Gotham per default farebbe
+emettere a Typst un avviso di font mancante a chiunque non ce l'abbia. Chi
+Gotham ce l'ha installato passa:
+
+```typst
+#show: uniud-theme.with(
+  display-font: ("Gotham", "Work Sans"),
+  display-weight: "bold",
+)
+```
 
 La costruzione — marchio a 12/12 mm con ingombro 13 mm, filetti da 1 pt a 12 mm
 dal bordo su 107→147 e 155→195 mm, blocchi di testo blu 8/8 larghi 40 mm,

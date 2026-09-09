@@ -98,6 +98,7 @@
 #let _paper-type = state("uniud-paper-type", uniud-paper-type())
 #let _letterhead = state("uniud-letterhead", (:))
 #let _display-font = state("uniud-display-font", uniud-display-font)
+#let _display-weight = state("uniud-display-weight", uniud-display-weight)
 
 // Cap height del Work Sans: le interlinee del manuale sono espresse come
 // "corpo/interlinea", e con l'ancoraggio alla linea delle maiuscole lo spazio
@@ -131,7 +132,7 @@
 // composto tipograficamente, come nel pacchetto LaTeX e nel modello ufficiale.
 // Tutte le misure derivano dall'unita' del manuale, u = ingombro * 4/21.
 
-#let _dept-mark(g, acronym, font) = {
+#let _dept-mark(g, acronym, font, weight) = {
   let u = g.mark-height * 4 / 21
   let seal = u * 21 / 4 // 5,25 u: il sigillo riempie l'ingombro
   let cap = u * 24 / 5 // 4,8 u: altezza dell'acronimo
@@ -144,7 +145,7 @@
         baseline: raise,
         text(
           font: font,
-          weight: "semibold",
+          weight: weight,
           size: cap / 0.66, // l'altezza data e' quella delle maiuscole
           fill: uniud-blue,
           top-edge: "cap-height",
@@ -159,10 +160,10 @@
 // Wordmark contratto del 'segue foglio': UNI e UD su due righe, scalate
 // insieme perche' il rapporto interno non dipenda dal font disponibile. Il
 // manuale ne fissa la larghezza complessiva, quindi si misura e si scala.
-#let _continuation-mark(width, font) = context {
+#let _continuation-mark(width, font, weight) = context {
   let mark = text(
     font: font,
-    weight: "black",
+    weight: weight,
     size: 20pt,
     fill: uniud-blue,
     top-edge: "cap-height",
@@ -197,6 +198,7 @@
   let t = _paper-type.final()
   let head = _letterhead.final()
   let font = _display-font.final()
+  let weight = _display-weight.final()
   let first = here().page() == 1
 
   if first {
@@ -204,7 +206,7 @@
       top + left,
       dx: g.mark-left,
       dy: g.mark-top,
-      _dept-mark(g, head.at("acronym", default: none), font),
+      _dept-mark(g, head.at("acronym", default: none), font, weight),
     )
     _head-rule(g, g.block1-left, g.block1-left + g.block-width)
     _head-rule(g, g.block2-left, g.block2-left + g.block-width)
@@ -243,7 +245,7 @@
       top + left,
       dx: g.mark-left,
       dy: g.mark-top,
-      _continuation-mark(g.continuation-width, font),
+      _continuation-mark(g.continuation-width, font, weight),
     )
     place(
       bottom + left,
@@ -284,8 +286,11 @@
   // Dati della carta intestata: acronimo, dipartimento, indirizzo, sito,
   // dicitura istituzionale.
   letterhead: (:),
-  // Carattere dei marchi composti: `("Gotham", "Work Sans")` per chi ha Gotham.
+  // Carattere e peso dei marchi composti — acronimo di dipartimento e wordmark
+  // del 'segue foglio', che il manuale vuole entrambi in Gotham Bold. Chi ha
+  // Gotham passa `("Gotham", "Work Sans")` e `"bold"`.
   display-font: uniud-display-font,
+  display-weight: uniud-display-weight,
   // Le note del relatore finiscono nella dispensa, evidenziate.
   notes: true,
   ..args,
@@ -342,6 +347,7 @@
   _paper-type.update(t)
   _letterhead.update(letterhead)
   _display-font.update(display-font)
+  _display-weight.update(display-weight)
   // `--input uniud-handout-notes=no` (cioe' `--no-notes` dello script) ha
   // l'ultima parola sul parametro del tema.
   let notes = if sys.inputs.at("uniud-handout-notes", default: none) == "no" { false } else { notes }

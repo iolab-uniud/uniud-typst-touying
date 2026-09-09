@@ -52,6 +52,13 @@
 // per default farebbe emettere a Typst un avviso di font mancante a chiunque.
 #let uniud-display-font = ("Work Sans",)
 
+// Peso dei marchi composti. Il manuale vuole Gotham Bold sia per l'acronimo di
+// dipartimento sia per il wordmark contratto UNI/UD; con Work Sans al posto di
+// Gotham il peso corrispondente e' il SemiBold (manuale p. 045, dove Circular
+// Bold diventa Work Sans SemiBold). Con Gotham installato si passa
+// `display-font: ("Gotham", "Work Sans")` e `display-weight: "bold"`.
+#let uniud-display-weight = "semibold"
+
 // Syntax highlighting restricted to the corporate palette: blue for keywords,
 // types and literals, 70 % black for strings, grey italic for comments.
 #let _code-theme = "assets/uniud-code.tmTheme"

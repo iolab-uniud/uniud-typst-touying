@@ -1,5 +1,10 @@
 # Changelog
 
+## Non rilasciato
+
+- Il wordmark UNI/UD del «segue foglio» della dispensa usa lo stesso peso dell'acronimo di dipartimento: il manuale li vuole entrambi in Gotham Bold, reso in Work Sans SemiBold quando Gotham non c'è. Prima era in Black, e accanto all'acronimo risultava troppo pesante. Il peso è configurabile con `display-weight`, accanto a `display-font`.
+- `release.sh` apre nell'editor anche una voce di changelog già presente nel file, invece di lasciarla passare senza mostrarla.
+
 ## 0.3.1 - 2026-09-09
 
 - release.sh: garantita la possibilità di rivedere/modificare nell'editor anche una voce di changelog già preparata prima di confermare la release
