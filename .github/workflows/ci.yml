@@ -16,7 +16,7 @@ jobs:
         typst: ["0.13.1", "0.15.1"]
     name: Typst ${{ matrix.typst }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Installa Typst ${{ matrix.typst }}
         run: |
@@ -30,7 +30,7 @@ jobs:
 
       - name: Allega i PDF alla build
         if: matrix.typst == '0.15.1'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pdf-di-esempio
           path: dist/*.pdf
