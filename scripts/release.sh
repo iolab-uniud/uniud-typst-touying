@@ -17,7 +17,9 @@
 # La voce di CHANGELOG.md viene abbozzata a partire dai commit dall'ultimo tag
 # in poi — se c'è un LLM da riga di comando (`claude -p`, o quello indicato in
 # RELEASE_CHANGELOG_CMD) è lui a scriverla — e poi aperta nell'editor per la
-# revisione, come il messaggio di un commit.
+# revisione, come il messaggio di un commit. Anche una voce già presente nel
+# file passa dall'editor: scritta prima, magari giorni prima, merita la stessa
+# rilettura di una bozza appena generata.
 #
 # Opzione `--yes` per non chiedere conferma (uso non interattivo).
 
@@ -170,7 +172,55 @@ fi
 TODAY="$(date +%Y-%m-%d)"
 
 if grep -Eq "^## ${NEW_VERSION}([[:space:]]|$)" CHANGELOG.md; then
-    echo "CHANGELOG.md ha già una voce per $NEW_VERSION: la lascio com'è."
+    echo "CHANGELOG.md ha già una voce per $NEW_VERSION."
+
+    # Anche una voce scritta a mano passa dall'editor: la revisione è la stessa
+    # che si farebbe su una bozza dell'LLM, e questo è l'ultimo momento utile
+    # per accorgersi che manca qualcosa. Il titolo della voce non si tocca.
+    if [[ "$ASSUME_YES" -eq 0 && "$EDIT_CHANGELOG" -eq 1 && -t 1 ]]; then
+        ENTRY="$(mktemp)"
+        HEADF="$(mktemp)"
+        TAILF="$(mktemp)"
+        trap 'rm -f "$ENTRY" "$HEADF" "$TAILF"' EXIT
+
+        VER="$NEW_VERSION" HEADF="$HEADF" ENTRYF="$ENTRY" TAILF="$TAILF" perl -0777 -e '
+          my $ver = quotemeta($ENV{VER});
+          my $c = <STDIN>;
+          $c =~ /\A(.*?^\#\# $ver(?:[ \t][^\n]*)?\n)(.*?)(^\#\# .*|\z)/ms
+            or exit 1;
+          my ($head, $entry, $tail) = ($1, $2, $3);
+          for ([$ENV{HEADF}, $head], [$ENV{ENTRYF}, $entry], [$ENV{TAILF}, $tail]) {
+            open my $fh, ">", $_->[0] or exit 1;
+            print $fh $_->[1];
+            close $fh;
+          }
+        ' < CHANGELOG.md || die "non riesco a isolare la voce di $NEW_VERSION in CHANGELOG.md"
+
+        {
+            printf '# Voce di CHANGELOG.md per la versione %s, già presente nel file.\n' "$NEW_VERSION"
+            printf '# Rileggila: è il momento buono per aggiungere quello che manca.\n'
+            printf '# Le righe che iniziano con # vengono ignorate.\n'
+            printf '# Salva ed esci per continuare; svuota il file per annullare.\n'
+        } >> "$ENTRY"
+
+        EDITOR_CMD="${GIT_EDITOR:-${VISUAL:-${EDITOR:-vi}}}"
+        $EDITOR_CMD "$ENTRY" </dev/tty >/dev/tty 2>&1 \
+            || die "l'editor è uscito con errore"
+
+        CLEANED="$(grep -v '^#' "$ENTRY" | perl -0pe 's/\A\s*\n//; s/\s*\z/\n/' || true)"
+        CLEANED="${CLEANED%$'\n'}"
+        [[ -n "$CLEANED" ]] || die "voce di changelog vuota: release annullata"
+
+        TMPFILE="$(mktemp)"
+        {
+            cat "$HEADF"
+            printf '\n%s\n' "$CLEANED"
+            # La riga vuota separa dalla voce successiva; se non c'è, non serve.
+            if [[ -s "$TAILF" ]]; then printf '\n'; fi
+            cat "$TAILF"
+        } > "$TMPFILE"
+        mv "$TMPFILE" CHANGELOG.md
+    fi
 else
     ENTRY="$(mktemp)"
     trap 'rm -f "$ENTRY"' EXIT
