@@ -10,9 +10,9 @@
 #
 # `typst.toml` è l'unica fonte di verità per la versione: da lì viene letta e
 # lì viene riscritta, insieme a tutti i punti che la citano (README, modello).
-# Lo script ricompila i PDF di esempio, li aggiorna nel repo, crea il commit e
-# il tag `vX.Y.Z` e lo pubblica: da quel momento è il workflow `release.yml` a
-# costruire gli allegati e a creare la release su GitHub.
+# Lo script ricompila tutto come verifica — nessun PDF finisce nel repository —
+# crea il commit e il tag `vX.Y.Z` e lo pubblica: da quel momento è il workflow
+# `release.yml` a costruire gli allegati e a creare la release su GitHub.
 #
 # La voce di CHANGELOG.md viene abbozzata a partire dai commit dall'ultimo tag
 # in poi — se c'è un LLM da riga di comando (`claude -p`, o quello indicato in
@@ -249,7 +249,7 @@ fi
 # --- build ------------------------------------------------------------------
 
 echo
-echo "Compilazione dei demo e dei pacchetti..."
+echo "Compilazione degli esempi e dei pacchetti..."
 ./scripts/build-release.sh "$NEW_VERSION"
 
 # La build qui serve come verifica: se un layout si rompe la release non parte.
@@ -258,8 +258,8 @@ for f in \
     "dist/uniud-touying-${NEW_VERSION}-pacchetto-locale.zip" \
     "dist/uniud-touying-${NEW_VERSION}-progetto.zip" \
     dist/thumbnail.png \
-    dist/demo.pdf dist/demo-01.pdf dist/demo-auto-sections.pdf \
-    dist/demo-teaching.pdf dist/demo-teaching-wide.pdf
+    dist/corporate.pdf dist/corporate-01.pdf dist/sections.pdf \
+    dist/lecture.pdf dist/lecture-wide.pdf
 do
     [[ -s "$f" ]] || die "la build non ha prodotto $f"
 done

@@ -17,6 +17,7 @@ c'è il [README](README.md).
 - [11. Personalizzazione](#11-personalizzazione)
 - [12. Riferimento delle funzioni](#12-riferimento-delle-funzioni)
 - [13. Problemi frequenti](#13-problemi-frequenti)
+- [14. Esempi](#14-esempi)
 
 ---
 
@@ -646,20 +647,28 @@ PowerPoint usa `#0433ff`.
 
 ---
 
-## Demo
+## 14. Esempi
 
-Nella cartella ci sono tre file di esempio, che sono anche la suite di test
-visivi del tema:
+Nella cartella `examples/` ci sono tre file di esempio, che sono anche la suite
+di test visivi del tema:
 
 | file | cosa mostra |
 | --- | --- |
-| `demo.typ` | un esemplare di ogni archetipo del PowerPoint corporate, più i casi limite: titoli multiriga, numeri di sezione a due cifre |
-| `demo-auto-sections.typ` | numerazione automatica delle sezioni, ciclo cromatico e override |
-| `demo-teaching.typ` | una lezione che usa tutti gli elementi didattici |
+| `examples/corporate.typ` | un esemplare di ogni archetipo del PowerPoint corporate, più i casi limite: titoli multiriga, numeri di sezione a due cifre |
+| `examples/sections.typ` | numerazione automatica delle sezioni, ciclo cromatico e override |
+| `examples/lecture.typ` | una lezione che usa tutti gli elementi didattici |
+
+I PDF già compilati si sfogliano su
+<https://iolab-uniud.github.io/uniud-typst-touying/> e sono allegati a ogni
+release. Per rigenerarli serve dire a Typst che la radice è il repository,
+perché gli esempi importano `../uniud-theme.typ`:
 
 ```
-typst compile --font-path fonts demo-teaching.typ
-typst compile --font-path fonts --input style=01 demo.typ demo-01.pdf
-typst compile --font-path fonts --input ratio=4-3 demo.typ demo-4-3.pdf
-typst compile --font-path fonts --input wide=true demo-teaching.typ demo-wide.pdf
+typst compile --root . --font-path fonts examples/lecture.typ
+typst compile --root . --font-path fonts --input style=01 examples/corporate.typ corporate-01.pdf
+typst compile --root . --font-path fonts --input ratio=4-3 examples/corporate.typ corporate-4-3.pdf
+typst compile --root . --font-path fonts --input wide=true examples/lecture.typ lecture-wide.pdf
 ```
+
+Oppure, in un colpo solo, `./scripts/build-release.sh`, che li compila tutti in
+`dist/`.

@@ -2,7 +2,7 @@ name: Release
 
 # L'unico workflow del progetto, e parte solo sui tag vN.N.N.
 # `workflow_dispatch` serve per una prova manuale: compila e allega i PDF alla
-# build, ma non pubblica nessuna release.
+# build, ma non pubblica né la release né le pagine.
 on:
   push:
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
@@ -25,7 +25,7 @@ jobs:
           curl -fsSL "https://github.com/typst/typst/releases/download/v0.13.1/typst-x86_64-unknown-linux-musl.tar.xz" | tar -xJ
           echo "$PWD/typst-x86_64-unknown-linux-musl" >> "$GITHUB_PATH"
 
-      - name: Compila i demo e impacchetta
+      - name: Compila gli esempi e impacchetta
         run: ./scripts/build-release.sh
 
   release:
@@ -54,7 +54,7 @@ jobs:
 
       # La versione la prende da typst.toml, che il passo qui sopra ha già
       # verificato essere quella del tag.
-      - name: Compila i demo e impacchetta
+      - name: Compila gli esempi e impacchetta
         run: ./scripts/build-release.sh
 
       - name: Allega i PDF alla build
@@ -73,3 +73,37 @@ jobs:
             --title "$GITHUB_REF_NAME" \
             --notes-file dist/NOTE-RELEASE.md \
             dist/*.pdf dist/*.zip dist/thumbnail.png
+
+      # Il sito: indice con la guida sezione per sezione, la guida e il
+      # riferimento tecnico in HTML, i PDF sfogliabili nel browser. Viene
+      # sostituito a ogni release, quindi mostra sempre l'ultima.
+      - name: Costruisci il sito
+        if: github.ref_type == 'tag'
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet markdown
+          .venv/bin/python scripts/build-site.py \
+            --version "${GITHUB_REF_NAME#v}" --out site
+
+      - name: Prepara l'artifact per le pagine
+        if: github.ref_type == 'tag'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  # Deploy separato, come vuole GitHub Pages: job dedicato, ambiente
+  # github-pages e permessi propri.
+  pagine:
+    name: Pubblica gli esempi su GitHub Pages
+    needs: release
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5

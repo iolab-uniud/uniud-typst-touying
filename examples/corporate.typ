@@ -2,12 +2,12 @@
 // One slide per archetype of the corporate PowerPoint master, plus the
 // multiline / stress cases the theme has to survive.
 //
-//   typst compile demo.typ
-//   typst compile --input ratio=4-3 demo.typ demo-4-3.pdf
-//   typst compile --input style=01 demo.typ demo-01.pdf
+//   typst compile --root .. corporate.typ
+//   typst compile --root .. --input ratio=4-3 corporate.typ corporate-4-3.pdf
+//   typst compile --root .. --input style=01 corporate.typ corporate-01.pdf
 
 #import "@preview/touying:0.7.4": *
-#import "uniud-theme.typ": *
+#import "../uniud-theme.typ": *
 
 // Change to "16-10" or "4-3" to test the same normalized layouts
 // at a different slide aspect ratio.

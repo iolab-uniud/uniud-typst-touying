@@ -5,7 +5,9 @@
 Claude outputs/
 
 dist/
+site/
+.venv/
 
-# I PDF sono output di compilazione: quelli dei demo li costruisce la CI e
+# I PDF sono output di compilazione: quelli degli esempi li costruisce la CI e
 # finiscono fra gli allegati della release, non nel repository.
 *.pdf

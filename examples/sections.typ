@@ -5,7 +5,7 @@
 // content lives under a `==` heading.
 
 #import "@preview/touying:0.7.4": *
-#import "uniud-theme.typ": *
+#import "../uniud-theme.typ": *
 
 #show: uniud-theme.with(
   aspect-ratio: "16-9",

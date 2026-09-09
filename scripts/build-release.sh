@@ -7,7 +7,7 @@
 #   ./scripts/build-release.sh 0.2.0      # versione esplicita
 #
 # Risultato in dist/:
-#   - i PDF di tutti i demo, in tutte le varianti
+#   - i PDF di tutti gli esempi, in tutte le varianti
 #   - uniud-touying-<v>-pacchetto-locale.zip  da scompattare in packages/local
 #   - uniud-touying-<v>-progetto.zip          progetto pronto, font inclusi
 #   - thumbnail.png                           anteprima del template
@@ -28,20 +28,22 @@ mkdir -p "$OUT/pdf"
 # --- PDF di esempio ---------------------------------------------------------
 # Sempre con --font-path fonts: i font del progetto, non quelli di sistema,
 # così il PDF della release è identico ovunque venga costruito.
+# `--root .`: gli esempi stanno in examples/ e importano ../uniud-theme.typ,
+# quindi la radice del progetto è il repository, non la loro cartella.
 compile() {
   local out="$1"; shift
   echo "    $out"
-  $TYPST compile --font-path fonts "$@" "$OUT/pdf/$out"
+  $TYPST compile --root . --font-path fonts "$@" "$OUT/pdf/$out"
 }
 
-compile demo.pdf                          demo.typ
-compile demo-01.pdf                       --input style=01   demo.typ
-compile demo-4-3.pdf                      --input ratio=4-3  demo.typ
-compile demo-16-10.pdf                    --input ratio=16-10 demo.typ
-compile demo-auto-sections.pdf            demo-auto-sections.typ
-compile demo-teaching.pdf                 demo-teaching.typ
-compile demo-teaching-01.pdf              --input style=01   demo-teaching.typ
-compile demo-teaching-wide.pdf            --input wide=true  demo-teaching.typ
+compile corporate.pdf         examples/corporate.typ
+compile corporate-01.pdf      --input style=01    examples/corporate.typ
+compile corporate-4-3.pdf     --input ratio=4-3   examples/corporate.typ
+compile corporate-16-10.pdf   --input ratio=16-10 examples/corporate.typ
+compile sections.pdf          examples/sections.typ
+compile lecture.pdf           examples/lecture.typ
+compile lecture-01.pdf        --input style=01    examples/lecture.typ
+compile lecture-wide.pdf      --input wide=true   examples/lecture.typ
 
 # --- pacchetto locale -------------------------------------------------------
 # Struttura richiesta da Typst: {namespace}/{nome}/{versione}/typst.toml
@@ -107,10 +109,10 @@ typst watch --font-path fonts main.typ
 
 ## PDF di esempio
 
-Allegati: i demo nei due stili corporate, nei tre formati e nella variante a
-tutta larghezza. \`demo.pdf\` è la suite di test visivi degli archetipi del
-PowerPoint d'Ateneo, \`demo-teaching.pdf\` una lezione che usa gli elementi
-didattici.
+Allegati: gli esempi nei due stili corporate, nei tre formati e nella variante
+a tutta larghezza. \`corporate.pdf\` è la suite di test visivi degli archetipi
+del PowerPoint d'Ateneo, \`lecture.pdf\` una lezione che usa gli elementi
+didattici, \`sections.pdf\` la numerazione e il cromatismo delle sezioni.
 
 ## Licenze
 

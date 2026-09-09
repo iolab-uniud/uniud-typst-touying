@@ -2,12 +2,12 @@
 // masters do not cover — agenda, columns, callouts, code, output, tables,
 // quotations, progressive reveals.
 //
-//   typst compile --font-path fonts demo-teaching.typ
-//   typst compile --font-path fonts --input style=01 demo-teaching.typ demo-teaching-01.pdf
-//   typst compile --font-path fonts --input wide=true demo-teaching.typ demo-wide.pdf
+//   typst compile --root .. lecture.typ
+//   typst compile --root .. --input style=01 lecture.typ lecture-01.pdf
+//   typst compile --root .. --input wide=true lecture.typ lecture-wide.pdf
 
 #import "@preview/touying:0.7.4": *
-#import "uniud-theme.typ": *
+#import "../uniud-theme.typ": *
 
 #show: uniud-theme.with(
   style: sys.inputs.at("style", default: "02"),
@@ -200,6 +200,6 @@ Cosa portarsi a casa.
 - La #alert[stabilità] è una proprietà dell'algoritmo, non dei dati.
 - Per l'analisi completa si vedano @clrs e @knuth1974; su quicksort @sedgewick1978.
 
-#references-slide(title: [Riferimenti], "demo-refs.bib", style: "ieee")
+#references-slide(title: [Riferimenti], "lecture.bib", style: "ieee")
 
 #focus-slide[Domande?]

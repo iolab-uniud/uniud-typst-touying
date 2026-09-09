@@ -1,6 +1,6 @@
 [package]
 name = "uniud-touying"
-version = "0.1.2"
+version = "0.1.0"
 entrypoint = "uniud-theme.typ"
 authors = ["Luca Di Gaspero"]
 license = "CC-BY-4.0 AND MIT-0"
@@ -11,10 +11,9 @@ categories = ["presentation"]
 disciplines = ["education"]
 compiler = "0.13.1"
 exclude = [
-  # i demo, gli script e la CI servono nel repository, non nel pacchetto
-  "/demo*.typ",
-  "/demo*.pdf",
-  "/demo-refs.bib",
+  # gli esempi, gli script e la CI servono nel repository, non nel pacchetto
+  "/examples",
+  "/*.pdf",
   "/dist",
   "/scripts",
   "/.github",

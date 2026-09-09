@@ -1,6 +1,6 @@
 # UniUD Touying theme
 
-[![CI](https://github.com/iolab-uniud/uniud-typst-touying/actions/workflows/ci.yml/badge.svg)](https://github.com/iolab-uniud/uniud-typst-touying/actions/workflows/ci.yml)
+[![Release](https://github.com/iolab-uniud/uniud-typst-touying/actions/workflows/release.yml/badge.svg)](https://github.com/iolab-uniud/uniud-typst-touying/actions/workflows/release.yml)
 
 Corporate Touying theme for UniUD teaching slides. Geometry and type are
 measured out of the two official UniUD PowerPoint masters and cross-checked
@@ -59,7 +59,7 @@ drop every file into it (fonts in a project folder are picked up automatically).
 installs the working tree as `@local/uniud-touying:<version>`, so a document can
 import it without going through a release; `--link` symlinks it instead of
 copying, and every edit to the theme is immediately live in the documents that
-import it. `./scripts/build-release.sh` compiles every demo in every variant and
+import it. `./scripts/build-release.sh` compiles every example in every variant and
 assembles both zips into `dist/`, which is exactly what CI does.
 
 ## Basic use
@@ -270,7 +270,7 @@ the number and the appearance directly:
 )
 ```
 
-`demo-auto-sections.typ` exercises all three levels at once.
+`examples/sections.typ` exercises all three levels at once.
 
 ## Corporate layout helpers
 
@@ -400,31 +400,41 @@ machinery keeps working: `#pause` for progressive reveals,
 `#alert[...]` for corporate-blue emphasis, `#figure(..., caption: ...)` with
 captions styled and unnumbered (`set figure(numbering: "1")` restores numbers).
 
-## Demos
+## Examples
 
-The rendered PDFs are attached to every
-[release](https://github.com/iolab-uniud/uniud-typst-touying/releases) and to
-each CI run; the repository keeps only the sources.
+`examples/` holds the decks the theme is developed against — they are the visual
+test suite, and every change is checked by rendering them. The repository keeps
+only the sources: the rendered PDFs live at
+**[iolab-uniud.github.io/uniud-typst-touying](https://iolab-uniud.github.io/uniud-typst-touying/)**,
+where they open in the browser next to the guide and this reference, and are
+attached to every
+[release](https://github.com/iolab-uniud/uniud-typst-touying/releases).
 
-- `demo.typ` — one slide per corporate archetype, plus the multiline and
-  two-digit-number stress cases. The same suite renders in either master and at
-  any aspect ratio:
-
-  ```
-  typst compile demo.typ
-  typst compile --input style=01 demo.typ demo-01.pdf   # or style=bottom
-  typst compile --input ratio=4-3 demo.typ demo-4-3.pdf
-  ```
-- `demo-auto-sections.typ` — automatic section numbering and the colour cycle.
-- `demo-teaching.typ` — a lecture using the teaching helpers: agenda, columns,
+- `examples/corporate.typ` — one slide per corporate archetype, plus the
+  multiline and two-digit-number stress cases. The same suite renders in either
+  master and at any aspect ratio.
+- `examples/sections.typ` — automatic section numbering and the colour cycle.
+- `examples/lecture.typ` — a lecture using the teaching helpers: agenda, columns,
   callouts, code and output, equations, table, figure, quotation, bibliography,
   progressive reveal. `--input wide=true` renders it in the wide variant.
+
+They import the theme as `../uniud-theme.typ`, so Typst needs the repository as
+its root. From the repository root:
+
+```sh
+typst compile --root . --font-path fonts examples/corporate.typ
+typst compile --root . --font-path fonts --input style=01 examples/corporate.typ corporate-01.pdf
+typst compile --root . --font-path fonts --input ratio=4-3 examples/corporate.typ corporate-4-3.pdf
+typst compile --root . --font-path fonts --input wide=true examples/lecture.typ lecture-wide.pdf
+```
+
+`./scripts/build-release.sh` renders all eight variants into `dist/` in one go.
 
 ## Licences and marks
 
 | what | licence |
 | --- | --- |
-| theme, demos, documentation | CC BY 4.0 (`LICENSE`) |
+| theme, examples, documentation | CC BY 4.0 (`LICENSE`) |
 | `template/` | MIT-0 (`template/LICENSE`) |
 | `assets/` — UniUD seal and wordmark | property of the Università degli Studi di Udine, not covered by the above |
 | `fonts/` — Work Sans, Fira Math | SIL Open Font License 1.1 |
@@ -459,16 +469,22 @@ used instead), `--no-edit` skips the editor, `--yes` skips both. Finally it runs
 the full build as a check — a broken layout stops the release right there — then
 shows the diff and asks before committing, tagging `vX.Y.Z` and pushing.
 
-No PDF is committed: the rendered demos are build output, and the copies that
-count are the ones CI rebuilds from the tag and attaches to the release, so
-they always match the tagged source. `dist/` is ignored, and so is every `.pdf`.
+No PDF is committed: the rendered examples are build output, and the copies that
+count are the ones CI rebuilds from the tag, so they always match the tagged
+source. `dist/` is ignored, and so is every `.pdf`. Each release attaches them as
+assets and also publishes them to GitHub Pages, replacing the site, so
+[the examples page](https://iolab-uniud.github.io/uniud-typst-touying/) always
+shows the current version.
 
 `release.yml` is the only workflow and it runs on `vX.Y.Z` tags only — nothing is
-built on an ordinary push. It compiles the demos with Typst 0.13.1 first, the
+built on an ordinary push. It compiles the examples with Typst 0.13.1 first, the
 minimum `typst.toml` declares, then builds and publishes the release with 0.15.1:
-example PDFs, both zips, thumbnail. `workflow_dispatch` runs the same build by
-hand without publishing anything, which is the way to check CI without cutting a
-release.
+example PDFs, both zips, thumbnail — then builds the site with
+`scripts/build-site.py` (index, guide, technical reference, PDFs; it needs the
+`markdown` module) and deploys it to Pages.
+`workflow_dispatch` runs the same build by hand without publishing anything,
+which is the way to check CI without cutting a release. Pages has to be enabled
+once in the repository settings, with **Source: GitHub Actions**.
 
 ## Publishing to Typst Universe
 
