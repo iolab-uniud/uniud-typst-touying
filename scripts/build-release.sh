@@ -44,7 +44,11 @@ compile sections.pdf          examples/sections.typ
 compile lecture.pdf           examples/lecture.typ
 compile lecture-01.pdf        --input style=01    examples/lecture.typ
 compile lecture-wide.pdf      --input wide=true   examples/lecture.typ
-compile lecture-handout.pdf   --input handout=true examples/lecture.typ
+# `handout=true` appiattisce le sottoslide restando in formato slide;
+# `uniud-handout=a4` e' un'altra cosa: la dispensa su carta intestata.
+compile lecture-una-pagina.pdf --input handout=true examples/lecture.typ
+compile lecture-senza-passi.pdf --input uniud-incremental=false examples/lecture.typ
+compile lecture-dispensa-a4.pdf --input uniud-handout=a4 examples/lecture.typ
 
 # --- pacchetto locale -------------------------------------------------------
 # Struttura richiesta da Typst: {namespace}/{nome}/{versione}/typst.toml
@@ -56,8 +60,10 @@ PKG="$OUT/pacchetto/$NAME/$VERSION"
 # funziona caricando i file nell'editor web di typst.app.
 PRJ="$OUT/progetto/$NAME-$VERSION"
 mkdir -p "$PRJ"
-cp uniud-theme.typ GUIDA.md LICENSE "$PRJ/"
+cp uniud-theme.typ uniud-tokens.typ uniud-handout.typ GUIDA.md LICENSE "$PRJ/"
 cp -R assets fonts "$PRJ/"
+# La configurazione dell'editor viaggia col progetto, come per `typst init`.
+cp -R template/.vscode "$PRJ/"
 sed -e 's|#import "@local/uniud-touying:[0-9.]*": \*|#import "uniud-theme.typ": *|' \
     -e 's|`template`|questa cartella|' \
     template/main.typ > "$PRJ/main.typ"

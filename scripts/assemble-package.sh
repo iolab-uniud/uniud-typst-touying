@@ -17,7 +17,10 @@ cd "$(dirname "$0")/.."
 DEST="$1"
 
 mkdir -p "$DEST"
-cp typst.toml uniud-theme.typ README.md GUIDA.md LICENSE "$DEST/"
+# I tre moduli sono un pacchetto solo: il tema importa i token, e in modalita'
+# dispensa rilega i propri nomi a quelli di uniud-handout.
+cp typst.toml uniud-theme.typ uniud-tokens.typ uniud-handout.typ "$DEST/"
+cp README.md GUIDA.md LICENSE "$DEST/"
 if [[ -f CHANGELOG.md ]]; then
     cp CHANGELOG.md "$DEST/"
 fi

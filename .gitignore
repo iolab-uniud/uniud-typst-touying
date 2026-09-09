@@ -12,5 +12,7 @@ site/
 # finiscono fra gli allegati della release, non nel repository.
 *.pdf
 
-# configurazione locale dell'editor
-.vscode/
+# configurazione locale dell'editor: solo quella del repository.
+# La barra iniziale conta: senza, il pattern si applica a ogni livello e
+# nasconderebbe anche `template/.vscode/`, che invece fa parte del pacchetto.
+/.vscode/

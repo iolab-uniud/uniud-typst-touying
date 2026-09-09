@@ -1,0 +1,71 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      // Cmd+Shift+B: le slide del file aperto.
+      "label": "Slide (PDF)",
+      "type": "shell",
+      "command": "typst",
+      "args": [
+        "compile",
+        "--font-path", "${workspaceFolder}/fonts",
+        "${file}",
+        "${fileDirname}/${fileBasenameNoExtension}.pdf"
+      ],
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "silent", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      // La stessa sorgente come dispensa A4 su carta intestata.
+      // Il tema commuta su `--input uniud-handout=a4`: non c'e' niente da
+      // cambiare nel documento.
+      "label": "Dispensa A4",
+      "type": "shell",
+      "command": "typst",
+      "args": [
+        "compile",
+        "--font-path", "${workspaceFolder}/fonts",
+        "--input", "uniud-handout=a4",
+        "${file}",
+        "${fileDirname}/${fileBasenameNoExtension}-dispensa.pdf"
+      ],
+      "group": "build",
+      "presentation": { "reveal": "silent", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      // Aggiunge una lezione al corso: chiede il nome e copia il modello.
+      // `cp -n` non sovrascrive niente se la cartella esiste gia'.
+      "label": "Nuova lezione",
+      "type": "shell",
+      "command": "mkdir -p '${input:nomeLezione}' && cp -n main.typ '${input:nomeLezione}/main.typ' && echo 'creata ${input:nomeLezione}/main.typ'",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      // Slide senza rivelazione progressiva, una pagina per slide.
+      "label": "Slide senza passi",
+      "type": "shell",
+      "command": "typst",
+      "args": [
+        "compile",
+        "--font-path", "${workspaceFolder}/fonts",
+        "--input", "uniud-incremental=false",
+        "${file}",
+        "${fileDirname}/${fileBasenameNoExtension}-senza-passi.pdf"
+      ],
+      "group": "build",
+      "presentation": { "reveal": "silent", "panel": "shared" },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "nomeLezione",
+      "type": "promptString",
+      "description": "Nome della cartella della nuova lezione (es. lezione-02)"
+    }
+  ]
+}

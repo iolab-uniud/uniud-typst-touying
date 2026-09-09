@@ -1,0 +1,18 @@
+{
+  // Estensione consigliata: Tinymist Typst (myriad-dreamin.tinymist)
+
+  // I font della presentazione stanno nel progetto: l'anteprima li trova qui
+  // senza che tu debba installarli nel sistema.
+  "tinymist.fontPaths": ["${workspaceFolder}/fonts"],
+  "tinymist.systemFonts": true,
+
+  // Il PDF si esporta su richiesta (usa "onSave" se lo preferisci):
+  // le attività "Slide (PDF)" e "Dispensa A4" sono in tasks.json.
+  "tinymist.exportPdf": "never",
+  "tinymist.formatterMode": "typstyle",
+
+  "[typst]": {
+    "editor.defaultFormatter": "myriad-dreamin.tinymist",
+    "editor.wordWrap": "on"
+  }
+}

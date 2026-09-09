@@ -613,6 +613,13 @@ typst query --root . --field value lezione.typ "<pdfpc-file>" --one > lezione.pd
   section-numbering: true,
   meta: auto,                  // contenuto dei tre ricorrenti
   handout: false,              // una pagina per slide invece che per passo
+  incremental: true,           // false: niente passi, tutto in chiaro
+  caption-at: "bottom",        // didascalie sotto le immagini, o "side"
+  slide-numbering: none,       // "1", "1/1", "I", o una funzione (n, tot)
+  overflow: "shrink",          // vedi «Quando il contenuto non ci sta»
+  overflow-min: 70%,           // riduzione massima consentita
+  overflow-marker: true,       // badge rosso sulle slide che sforano
+  overflow-warn: true,         // warning del compilatore
   layout: auto,                // vedi sotto
   type-scale: auto,            // vedi sotto
   config-info(...),
@@ -622,6 +629,245 @@ typst query --root . --field value lezione.typ "<pdfpc-file>" --one > lezione.pd
 Se cambi `font`, aggiorna anche `cap-height`: da lì il tema ricava le
 interlinee e l'allineamento della prima riga sull'ancoraggio (0.66 è il valore
 di Work Sans).
+
+### La dispensa A4
+
+Le stesse sorgenti si compongono anche come documento A4 su carta intestata,
+invece che come slide:
+
+Si accende con un `--input` al compilatore, non con un parametro del tema:
+
+```
+typst compile --input uniud-handout=a4 --font-path fonts lezione.typ lezione-handout.pdf
+typst watch   --input uniud-handout=a4 --font-path fonts lezione.typ   # anteprima dal vivo
+```
+
+Lo script è solo una scorciatoia per la stessa riga, con l'uscita e i font già
+al posto giusto:
+
+```
+./scripts/make-handout.sh lezione.typ            # → lezione-handout.pdf
+./scripts/make-handout.sh lezione.typ --no-notes # senza le note del relatore
+```
+
+In VS Code c'è l'attività **Dispensa A4**, e un progetto creato con
+`typst init` se la porta già dietro: nel template c'è un `.vscode/` con le
+attività — *Slide (PDF)*, *Dispensa A4*, *Slide senza passi*, *Nuova lezione* —
+più le impostazioni di Tinymist che fanno trovare all'anteprima i font della
+cartella `fonts/`. Non c'è niente da configurare: si apre la cartella e si preme
+Cmd+Shift+B. Vedi anche «Un corso con più lezioni» qui sotto.
+
+**Perché non è un parametro del tema.** Quando la lezione chiama `#text-slide`,
+quel nome deve già puntare all'implementazione giusta: la scelta va fatta
+all'importazione del modulo, cioè prima che `uniud-theme.with(...)` venga
+eseguito. `--input` è l'unica cosa che arriva abbastanza presto. In compenso non
+tocca la sorgente: lo stesso file dà slide o dispensa a seconda di come lo
+compili.
+
+Lo script prende il **sorgente**, non il PDF delle slide: la dispensa non è un
+fotomontaggio delle diapositive, è lo stesso contenuto ricomposto come
+documento. Sotto il cofano è `typst compile --input uniud-handout=a4`, e la
+lezione non cambia di una riga: il tema, in coda a `uniud-theme.typ`, rilega i
+propri nomi pubblici alle versioni di `uniud-handout.typ`.
+
+Cosa diventa cosa:
+
+| sulle slide | nella dispensa |
+| --- | --- |
+| copertina | testata del documento, al mozzo di 1/3 di pagina |
+| `= Sezione` | titolo di capitolo, su pagina nuova, con filetto blu |
+| `== Titolo` | titolo di paragrafo |
+| `#pause`, liste a fuoco, codice passo passo | tutto in chiaro, niente passi |
+| `focus-slide` | richiamo su fondo blu |
+| `quote-slide` | citazione con filetto laterale |
+| `outline-slide` | indice del documento |
+| immagini e didascalie | figure con didascalia |
+| `#speaker-note` | blocco evidenziato in azzurro |
+
+I dati della carta intestata si passano al tema con `letterhead`, che sulle
+slide non ha effetto:
+
+```typst
+#show: uniud-theme.with(
+  letterhead: (
+    acronym: [DPIA],
+    department: [Dipartimento Politecnico di\ ingegneria e architettura],
+    site: [uniud.it],
+    address: ([via delle Scienze 206], [33100 Udine, Italia]),
+    institution-line: [Università degli Studi di Udine],
+  ),
+  ...
+)
+```
+
+Il marchio di dipartimento non è un file: è il sigillo più l'acronimo composto
+tipograficamente, come nel modello ufficiale e nel pacchetto LaTeX
+`uniudletter`. Il manuale vuole Gotham; il default è Work Sans, che il manuale
+stesso prescrive come sostituto d'ufficio (p. 045) e che non fa emettere a
+Typst avvisi di font mancante. Chi ha Gotham installato passa
+`display-font: ("Gotham", "Work Sans")`.
+
+La costruzione — marchio a 12/12 mm con ingombro 13 mm, filetti da 1 pt a 12 mm
+dal bordo su 107→147 e 155→195 mm, blocchi di testo blu 8/8 larghi 40 mm,
+wordmark UNI/UD da 21,3 mm sul «segue foglio», numerazione «n di N» a 176 mm —
+sta tutta in `uniud-paper()`, insieme alla scala tipografica di
+`uniud-paper-type()`: sono i corrispettivi di `uniud-layout()` e `uniud-type()`
+delle slide.
+
+### Slide senza rivelazione progressiva
+
+`incremental: false` spegne i passi: ogni slide sta su una pagina sola e tutto è
+in chiaro.
+
+```typst
+#show: uniud-theme.with(incremental: false, ...)
+```
+
+Si può anche spegnere da riga di comando, senza toccare il documento — è quello
+che fa l'attività *Slide senza passi*:
+
+```
+typst compile --input uniud-incremental=false --font-path fonts lezione.typ
+```
+
+Non è solo `handout: true`, che appiattisce le sottoslide ma lascia l'ultimo
+passo com'era — l'ultima voce di una lista a fuoco in primo piano e le altre
+sullo sfondo, il codice con l'ultima evidenziazione accesa. Con
+`incremental: false` decadono anche quelli: `focus-list` torna una lista
+normale, `code-box(steps: ...)` mostra il codice senza evidenziazioni e
+`dim-at` non sbiadisce niente. `alert-at`, `mark-at` e `strike-at` restano:
+sono enfasi, non passi.
+
+### Numerazione delle slide
+
+Di default le slide non sono numerate. `slide-numbering` accende il numero in
+basso a destra, nello stile dei ricorrenti:
+
+```typst
+#show: uniud-theme.with(slide-numbering: "1")      // 12
+#show: uniud-theme.with(slide-numbering: "1/1")    // 12/48
+#show: uniud-theme.with(slide-numbering: "I")      // XII
+#show: uniud-theme.with(slide-numbering: (n, tot) => [#n di #tot])
+```
+
+Una stringa è un modello di `numbering`: se contiene due simboli di conteggio
+(`"1/1"`) riceve numero e totale, altrimenti solo il numero. Una funzione riceve
+sempre entrambi.
+
+Il numero conta le **slide logiche**: le sottoslide di una stessa slide —
+`#pause`, liste a fuoco, codice passo passo — portano tutte lo stesso numero.
+Copertina, slide di sezione, `focus-slide` e `quote-slide` non lo mostrano e non
+lo consumano, quindi la numerazione scorre senza salti sulle sole slide di
+contenuto, e il totale è il numero di quelle.
+
+Nello stile `"02"` il numero sta nel margine inferiore, che la banda in alto
+lascia libero; nello stile `"01"` si allinea alla riga dei ricorrenti, sulle
+colonne che loro non usano. La riga si sposta con `slide-number-top` di
+`uniud-layout`.
+
+### Un corso con più lezioni
+
+`typst init` crea un progetto per volta e copia il template intero: non ha
+opzioni per saltarne dei pezzi, le uniche che accetta riguardano dove cercare i
+pacchetti. Per un corso conviene quindi inizializzare **una volta sola** la
+cartella del corso e tenerci dentro le lezioni:
+
+```
+corso/
+  .vscode/          ← una volta sola, vale per tutte
+  fonts/            ← una volta sola
+  main.typ          ← il modello da cui copiare
+  lezione-01/main.typ
+  lezione-02/main.typ
+```
+
+Le attività funzionano già così: compilano il **file aperto** e cercano i font
+in `${workspaceFolder}/fonts`, quindi valgono per qualunque lezione, a
+qualunque profondità. Per aggiungerne una c'è l'attività **Nuova lezione**, che
+chiede il nome e copia il modello nella nuova cartella; a mano è un
+`cp main.typ lezione-03/main.typ`, non serve un altro `typst init`.
+
+**Se i font sono già installati nel sistema**, la cartella `fonts/` si può
+cancellare: un `--font-path` che punta a una cartella inesistente non è un
+errore per Typst, che passa oltre e usa i font di sistema. Le attività
+continuano a funzionare senza modifiche. Tenerla serve solo a rendere il
+progetto portabile — su un altro computer, o su typst.app, dove i font di
+sistema non ci sono.
+
+### Quando il contenuto non ci sta
+
+Prima di comporre una slide il tema ne misura il corpo. Se non sta nell'area di
+testo, di default lo riduce quanto basta per farcelo stare e te lo segnala in
+due modi: un **warning del compilatore** con il numero di pagina e il fattore
+applicato, e un **badge rosso** in fondo alla slide.
+
+```
+warning: [uniud-touying] contenuto in overflow a pagina 12, ridotto all'82%
+```
+
+La riduzione non scende sotto `overflow-min` (70% di default): sotto quella
+soglia il testo diventa illeggibile e la slide va alleggerita a mano. Se
+nemmeno la soglia basta, il tema **non riduce affatto** e si limita a
+segnalare: un blocco scalato non si spezza, quindi ridurre farebbe sparire il
+testo in eccesso invece di mandarlo alla pagina dopo. Meglio una slide in più,
+segnalata, che un paragrafo perso.
+
+Le modalità sono quattro:
+
+| `overflow:` | cosa fa |
+| --- | --- |
+| `"shrink"` | riduce fino a `overflow-min` e segnala (default) |
+| `"mark"` | non tocca il layout, segnala soltanto |
+| `"error"` | interrompe la compilazione sulla prima slide che sfora |
+| `"ignore"` | lascia traboccare, nessun avviso |
+
+Per la singola slide gli argomenti stanno sulla funzione:
+
+```typst
+#content-slide(title: [Denso], overflow: "ignore")[...]
+#text-slide(scale: 85%)[...]   // riduzione manuale, niente misura né avvisi
+```
+
+Le slide che nascono da un `== Titolo` non prendono argomenti: si cambia
+politica con `#show:`, come per `wide-mode`.
+
+```typst
+#show: overflow-mode("ignore")       // lascia traboccare da qui in avanti
+#show: overflow-mode(marker: false)  // riduci in silenzio, senza badge
+#show: overflow-mode(warn: false)    // niente warning del compilatore
+#show: overflow-mode(auto)           // torna alle impostazioni del tema
+```
+
+Per la consegna conviene spegnere il badge (`overflow-marker: false`) e tenere
+acceso il warning: le slide troppo piene restano segnalate in compilazione, ma
+il PDF resta pulito.
+
+### Didascalie delle immagini
+
+Le didascalie stanno **sotto** l'immagine, nello stesso stile delle didascalie
+di `#figure` (corpo piccolo, grigio scuro).
+
+```typst
+#media-box(caption: [Schema del pipeline.])[#image("pipeline.svg")]
+```
+
+Lo spazio della didascalia viene tolto all'altezza del riquadro, quindi
+l'immagine si stringe da sola e il blocco continua a occupare esattamente la
+cella che gli spetta.
+
+Anche gli archetipi con immagini mettono il testo sotto la figura invece che
+nella colonna laterale del PowerPoint. Con `caption-at` si torna alla
+disposizione del master, per una slide o per tutto il mazzo:
+
+```typst
+#caption-media-slide(caption-at: "side")[Testo][#media-box[]]
+#show: uniud-theme.with(caption-at: "side", ...)   // per tutta la presentazione
+```
+
+Nella variante `bottom` (default) l'immagine — o la griglia 2×2 di
+`caption-grid-slide` — prende tutta la larghezza della griglia e il testo le va
+sotto; in `side` vale la geometria corporate, testo sulle colonne 1-4 e
+immagini sulle 5-12.
 
 ### Cosa scrivere nei ricorrenti
 
@@ -758,6 +1004,7 @@ I ruoli sono `title`, `subtitle`, `number`, `body-large`, `body`, `meta`,
 | `uniud-layout` | griglia e ancoraggi |
 | `uniud-type` | scala tipografica |
 | `wide-mode` | cambia la larghezza da un punto in poi, con `#show:` |
+| `overflow-mode` | cambia la politica di overflow da un punto in poi, con `#show:` |
 
 ---
 
@@ -771,9 +1018,15 @@ formule escono comunque, in graziato.
 **Il testo che ho scritto dopo `= Sezione` non compare** — è diventato il
 sottotitolo della slide di sezione. Spostalo sotto una `==`.
 
-**Il testo sfora la slide** — i corpi corporate sono grandi per scelta (85 pt
-sulla slide di solo testo). Usa `text-slide(role: "body")` per il corpo più
-piccolo, spezza la slide, o allarga la giustezza con `wide: true`.
+**Il testo sfora la slide** — il tema lo riduce da solo e te lo dice con un
+warning e un badge rosso: vedi «Quando il contenuto non ci sta». La riduzione è
+una rete di sicurezza, non una soluzione — i corpi corporate sono grandi per
+scelta (85 pt sulla slide di solo testo), quindi usa `text-slide(role: "body")`
+per il corpo più piccolo, spezza la slide, o allarga la giustezza con
+`wide: true`.
+
+**Vedo un badge «OVERFLOW» nel PDF** — è il segnale che quella slide è stata
+ridotta. Sistemala, oppure spegni il badge con `overflow-marker: false`.
 
 **La numerazione delle sezioni parte da zero o salta** — non dovrebbe: il tema
 usa un contatore suo, indipendente da quello delle intestazioni, e le slide di

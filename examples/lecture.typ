@@ -18,6 +18,14 @@
   // One page per slide instead of one per step, for the handout.
   handout: sys.inputs.at("handout", default: "false") == "true",
   font: "Work Sans",
+  // Carta intestata della dispensa A4: sulle slide non ha effetto.
+  letterhead: (
+    acronym: [DPIA],
+    department: [Dipartimento Politecnico di\ ingegneria e architettura],
+    site: [uniud.it],
+    address: ([via delle Scienze 206], [33100 Udine, Italia]),
+    institution-line: [Università degli Studi di Udine],
+  ),
   config-info(
     title: [Strutture dati e algoritmi],
     subtitle: [Lezione 7 — Ordinamento per fusione],

@@ -59,7 +59,9 @@ drop every file into it (fonts in a project folder are picked up automatically).
 installs the working tree as `@local/uniud-touying:<version>`, so a document can
 import it without going through a release; `--link` symlinks it instead of
 copying, and every edit to the theme is immediately live in the documents that
-import it. `./scripts/build-release.sh` compiles every example in every variant and
+import it. `--prune` clears the older versions left in the namespace once the
+new one is in place, and `--uninstall --all` removes every installed version.
+`./scripts/build-release.sh` compiles every example in every variant and
 assembles both zips into `dist/`, which is exactly what CI does.
 
 ## Basic use
@@ -200,6 +202,166 @@ Title, subtitle and body blocks flow — they are never pinned to a fixed height
 A one-line title leaves the subtitle high on the slide, a three-line title
 pushes it down, and the two can never collide. The only fixed vertical
 reference is the anchor at the top of the block.
+
+## A4 handout
+
+The same source also composes as an A4 document on department letterhead
+instead of as slides:
+
+It is switched on with a compiler `--input`, not a theme parameter — by the
+time `uniud-theme.with(...)` runs, `#text-slide` has already been resolved, so
+the choice has to be made when the module is imported:
+
+```
+typst compile --input uniud-handout=a4 --font-path fonts lecture.typ lecture-handout.pdf
+typst watch   --input uniud-handout=a4 --font-path fonts lecture.typ
+```
+
+The script is a shortcut for that same line. A project scaffolded with
+`typst init` already carries a `.vscode/` with tasks for slides, the A4 handout,
+slides without progressive reveal and adding a new lecture, plus the Tinymist
+settings that point the preview at the project's own `fonts/`. For a course,
+run `typst init` once at the course root and keep the lectures in subfolders:
+the tasks compile the open file and look for fonts in `${workspaceFolder}/fonts`,
+so they work at any depth. With the fonts installed system-wide the `fonts/`
+folder can simply be deleted — a `--font-path` pointing nowhere is not an error
+— and it is only worth keeping to make the project portable, typst.app
+included.
+
+```
+./scripts/make-handout.sh lecture.typ             # → lecture-handout.pdf
+./scripts/make-handout.sh lecture.typ --no-notes
+```
+
+The script takes the *source*, not the slide PDF: the handout is not a montage
+of the slides, it is the same content recomposed as a document. Underneath it
+is `typst compile --input uniud-handout=a4`; the lecture file does not change,
+because `uniud-theme.typ` rebinds its public names to the `uniud-handout.typ`
+versions when that flag is set.
+
+The cover becomes the document masthead, `= Section` a chapter opening, `==
+Title` a paragraph heading, progressive reveal collapses, `focus-slide` becomes
+a blue callout, and `#speaker-note` — invisible on stage — becomes a
+highlighted block, which is where half the value of a handout is.
+
+Letterhead data goes to the theme through `letterhead`, ignored in slide mode:
+
+```typst
+#show: uniud-theme.with(
+  letterhead: (
+    acronym: [DPIA],
+    department: [Dipartimento Politecnico di\ ingegneria e architettura],
+    site: [uniud.it],
+    address: ([via delle Scienze 206], [33100 Udine, Italia]),
+    institution-line: [Università degli Studi di Udine],
+  ),
+)
+```
+
+The department mark is not an artwork file: it is the seal plus the acronym set
+in type, the way the official model and the `uniudletter` LaTeX package build
+it. The manual asks for Gotham; the default is Work Sans, which the manual
+itself prescribes as the office substitute, and which raises no missing-font
+warning. With Gotham installed, pass `display-font: ("Gotham", "Work Sans")`.
+
+Sheet geometry lives in `uniud-paper()` and the type scale in
+`uniud-paper-type()`, the document counterparts of `uniud-layout()` and
+`uniud-type()`.
+
+## Slides without progressive reveal
+
+`incremental: false` turns the steps off: one page per slide, everything shown.
+
+```typst
+#show: uniud-theme.with(incremental: false, ...)
+```
+
+It can also be switched off from the command line, leaving the document alone:
+
+```
+typst compile --input uniud-incremental=false --font-path fonts lecture.typ
+```
+
+It is more than `handout: true`, which flattens the subslides but keeps the
+last step as it was — the final item of a focus list in the foreground and the
+rest pushed back, the last code highlight still on. With `incremental: false`
+those decay too: `focus-list` becomes a plain list, `code-box(steps: ...)` shows
+the code with no highlighting, `dim-at` dims nothing. `alert-at`, `mark-at` and
+`strike-at` stay: they are emphasis, not steps.
+
+## Slide numbers
+
+Off by default. `slide-numbering` puts the number bottom right, in the style of
+the recurring items.
+
+```typst
+#show: uniud-theme.with(slide-numbering: "1")     // 12
+#show: uniud-theme.with(slide-numbering: "1/1")   // 12/48
+#show: uniud-theme.with(slide-numbering: (n, tot) => [#n of #tot])
+```
+
+A string is a `numbering` pattern: with two counting symbols it gets the number
+and the total, otherwise just the number; a function always gets both.
+
+It counts logical slides, so every subslide of one slide carries the same
+number. The cover, section slides, `focus-slide` and `quote-slide` neither show
+it nor consume one, so the sequence runs unbroken over the content slides and
+the total is how many of those there are. Style `"02"` puts it in the bottom
+margin the band leaves free, style `"01"` on the row of the recurring items;
+`uniud-layout(slide-number-top: ...)` moves it.
+
+## Overflow
+
+Every slide body is measured before it is laid out. When it does not fit the
+text area the theme shrinks it just enough — never below `overflow-min` — and
+says so twice: a compiler warning naming the page and the factor, and a red
+badge on the slide itself.
+
+```
+warning: [uniud-touying] contenuto in overflow a pagina 12, ridotto all'82%
+```
+
+```typst
+#show: uniud-theme.with(
+  overflow: "shrink",      // "shrink" (default), "mark", "error", "ignore"
+  overflow-min: 70%,       // how far down the shrink may go
+  overflow-marker: true,   // the red badge
+  overflow-warn: true,     // the compiler warning
+)
+
+#content-slide(title: [Dense], overflow: "ignore")[...]
+#text-slide(scale: 85%)[...]        // fixed manual shrink, no measuring
+
+#show: overflow-mode("ignore")      // for `== Heading` slides, like wide-mode
+#show: overflow-mode(marker: false) // shrink quietly
+#show: overflow-mode(auto)          // back to the theme settings
+```
+
+When even `overflow-min` is not enough the theme shrinks nothing and only
+warns: a scaled block cannot break, so shrinking would drop the excess text
+instead of carrying it over. A flagged extra slide beats a lost paragraph.
+
+Shipping a deck usually means `overflow-marker: false` with the warning left
+on: the PDF stays clean, the crowded slides still show up in the build log.
+
+## Captions
+
+Captions sit under the image, in the same style as `#figure` captions, and
+their height is taken out of the box so the picture shrinks instead of the
+block growing.
+
+```typst
+#media-box(caption: [Pipeline overview.])[#image("pipeline.svg")]
+```
+
+The caption archetypes follow the same rule: the text goes under the picture
+rather than in the side column of the PowerPoint master. `caption-at: "side"`
+restores the corporate geometry, per slide or deck-wide.
+
+```typst
+#caption-media-slide(caption-at: "side")[Text][#media-box[]]
+#show: uniud-theme.with(caption-at: "side", ...)
+```
 
 ## Aspect ratios
 

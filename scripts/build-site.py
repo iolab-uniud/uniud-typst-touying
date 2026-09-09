@@ -47,7 +47,11 @@ ESEMPI = [
         ("lecture.pdf", "elementi didattici: indice, colonne, callout, codice, formule, tabelle, bibliografia"),
         ("lecture-01.pdf", "la stessa lezione nello stile 01"),
         ("lecture-wide.pdf", "misura del testo a tutta larghezza"),
-        ("lecture-handout.pdf", "la stessa lezione in handout: una pagina per slide invece che per passo"),
+        ("lecture-una-pagina.pdf", "una pagina per slide invece che per passo"),
+        ("lecture-senza-passi.pdf", "senza rivelazione progressiva: liste, codice e sfocature tutti in chiaro"),
+    ]),
+    ("Dispensa", [
+        ("lecture-dispensa-a4.pdf", "la stessa lezione come documento A4 su carta intestata di dipartimento, con le note del relatore"),
     ]),
 ]
 

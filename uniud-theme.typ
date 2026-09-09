@@ -41,35 +41,17 @@
 // the corporate proportions drift from one aspect ratio to the next.
 
 #import "@preview/touying:0.7.4": *
+// Warning veri del compilatore: la dipendenza arriva gia' con Touying.
+#import "@preview/uniwarn:0.1.1"
 
 // -----------------------------------------------------------------------------
-// Corporate palette - Manuale di identità visiva, p. 037 and p. 148
+// Design tokens
 // -----------------------------------------------------------------------------
 
-/// Blu UNIUD, Pantone 072 U. The manual prescribes #0000ff both for print and
-/// for the web; the shipped PowerPoint master actually uses #0433ff, exported
-/// below as `uniud-blue-ppt` for pixel comparisons with the corporate deck.
-#let uniud-blue = rgb("#0000FF")
-#let uniud-blue-ppt = rgb("#0433FF")
-
-/// Grigio UNIUD, Pantone 877 U (print) and its web counterpart.
-#let uniud-gray = rgb("#B3B6B7")
-#let uniud-gray-web = rgb("#CDCDCE")
-
-#let uniud-black = rgb("#000000")
-#let uniud-white = rgb("#FFFFFF")
-
-/// 70 % black, the "grigio scuro" the manual uses for secondary text.
-#let uniud-dark-gray = rgb("#4D4D4D")
-
-#let _full-logo-blue = "assets/uniud-full-blue.svg"
-#let _full-logo-white = "assets/uniud-full-white.svg"
-#let _compact-logo-blue = "assets/uniud-compact-blue.png"
-#let _compact-logo-white = "assets/uniud-compact-white.png"
-
-// Syntax highlighting restricted to the corporate palette: blue for keywords,
-// types and literals, 70 % black for strings, grey italic for comments.
-#let _code-theme = "assets/uniud-code.tmTheme"
+// Colori e loghi stanno in un modulo a parte, condiviso con la dispensa A4.
+// `import *` li rimette in circolo, quindi `uniud-blue` e compagni restano
+// esportati da questo file come sempre.
+#import "uniud-tokens.typ": *
 
 // -----------------------------------------------------------------------------
 // Normalized geometry
@@ -139,6 +121,10 @@
   // the rule on the margin; pass 12.4 to sit as low as the PowerPoint master)
   // and the 35 cm anchor in style "01".
   meta-top: auto,
+  // Riga del numero di slide. Nello stile "02" sta sotto l'area di testo, nel
+  // margine inferiore lasciato libero dalla banda; nello stile "01" si allinea
+  // ai ricorrenti, sulle colonne che loro non usano.
+  slide-number-top: auto,
 ) = {
   // "bottom" and "top" are semantic spellings of the two corporate masters.
   let style = if style == "bottom" { "01" } else if style == "top" { "02" } else { style }
@@ -182,6 +168,9 @@
       media-anchor
     } else if banded { top-anchor } else { v-margin },
     meta-top: if meta-top != auto { meta-top } else if banded { 5.17 } else { 90.69 },
+    slide-number-top: if slide-number-top != auto {
+      slide-number-top
+    } else if banded { 100.0 - v-margin } else if meta-top != auto { meta-top } else { 90.69 },
   )
 }
 
@@ -339,6 +328,48 @@
   }
 }
 
+// Numero di slide, in basso a destra.
+//
+// Sta dentro `_chrome`, quindi compare solo sulle slide che hanno i ricorrenti:
+// copertina, slide di sezione, focus e citazioni ne restano fuori da se'. Quelle
+// slide congelano anche il contatore di Touying, percio' la numerazione scorre
+// senza salti sulle sole slide di contenuto.
+#let _slide-number(self, ink) = {
+  let spec = self.store.at("slide-numbering", default: none)
+  if spec == none { return none }
+  let g = self.store.uniud-layout
+  let t = self.store.uniud-type
+  place(
+    top + left,
+    dx: _pc(_col(g, g.columns - 2)),
+    dy: _pc(g.slide-number-top),
+    block(
+      width: _pc(_span(g, 3)),
+      {
+        // I ricorrenti hanno il filetto sopra il testo: lo stesso stacco tiene
+        // il numero sulla loro riga invece che un filo piu' in alto.
+        v(t.rule + t.rule-gap)
+        align(
+          right,
+          context {
+            let current = utils.slide-counter.get().first()
+            let total = utils.last-slide-counter.final().first()
+            let rendered = if type(spec) == function {
+              spec(current, total)
+            } else {
+              // `numbering("1", 12, 48)` darebbe "1248": il totale si passa
+              // solo se il modello ha davvero due simboli di conteggio ("1/1").
+              let symbols = spec.matches(regex("[1aAiI]")).len()
+              if symbols >= 2 { numbering(spec, current, total) } else { numbering(spec, current) }
+            }
+            _typeset(t, "meta", ink, rendered)
+          },
+        )
+      },
+    ),
+  )
+}
+
 // The logo, on the corner given by `logo-align`.
 #let _logo(self, file, x, y, width) = {
   let g = self.store.uniud-layout
@@ -369,6 +400,8 @@
     }
     #_compact-logo(self, if banded { _compact-logo-white } else { _compact-logo-blue })
     #_meta-block(self, if banded { self.colors.neutral-lightest } else { self.colors.neutral-darkest })
+    // Il numero sta sempre fuori dalla banda, quindi vuole comunque l'inchiostro scuro.
+    #_slide-number(self, self.colors.neutral-darkest)
   ]
 }
 
@@ -399,6 +432,199 @@
         block(above: 0pt, below: 0pt, _typeset(t, subtitle-role, subtitle-ink, subtitle))
       }
     },
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Overflow
+// -----------------------------------------------------------------------------
+
+// Prima di comporre una slide il tema ne misura il corpo: se non sta nell'area
+// di testo lo riduce quanto basta e lo segnala, invece di lasciarlo traboccare
+// (o, nelle slide a flusso, di spezzarlo su una pagina in piu').
+//
+//   mode    "shrink" riduce e segnala, "mark" segnala soltanto,
+//           "error" interrompe la compilazione, "ignore" lascia correre
+//   min     riduzione massima consentita: sotto questa soglia il testo
+//           diventa illeggibile e conviene tagliare il contenuto
+//   marker  badge di avviso sulle slide che sforano
+#let _overflow-defaults = (mode: "shrink", min: 70%, marker: true, warn: true)
+
+// Sopra questo fattore la riduzione e' rumore: il contenuto stava gia'
+// riempiendo la regione esatta, non sforandola.
+#let _overflow-deadband = 0.97
+
+#let _overflow-namespace = uniwarn.register-namespace("uniud-touying", panic: false)
+#let _overflow-warn = uniwarn.warning.with(
+  namespace: "uniud-touying",
+  prefix: "[uniud-touying] ",
+)
+
+#let _overflow-config(self, overflow) = {
+  let cfg = (
+    _overflow-defaults
+      + self.store.at("overflow", default: (:))
+      + self.store.at("overflow-override", default: (:))
+  )
+  if overflow == auto {
+    cfg
+  } else if type(overflow) == dictionary {
+    cfg + overflow
+  } else {
+    cfg + (mode: overflow)
+  }
+}
+
+// Badge rosso fuori dal flusso, in fondo a destra dell'area misurata.
+#let _overflow-badge(factor) = place(
+  bottom + right,
+  dy: 1em,
+  block(
+    fill: rgb("#D62828"),
+    inset: (x: .4em, y: .25em),
+    radius: .15em,
+    text(
+      size: 8pt,
+      fill: uniud-white,
+      weight: "bold",
+      tracking: 0pt,
+      spacing: 100%,
+      top-edge: "ascender",
+      bottom-edge: "descender",
+      if factor == none { "OVERFLOW" } else { "OVERFLOW " + str(calc.round(factor * 100)) + "%" },
+    ),
+  ),
+)
+
+/// Adatta `body` allo spazio disponibile secondo la politica di overflow.
+///
+/// - overflow: `auto` per la politica corrente del tema, oppure una delle
+///   modalita' ("shrink", "mark", "error", "ignore") o un dizionario parziale.
+/// - scale: percentuale fissa; salta misura e avvisi, e' la riduzione manuale.
+#let _fit(self, body, overflow: auto, scale: auto) = {
+  let cfg = _overflow-config(self, overflow)
+  if scale != auto {
+    let k = scale / 100%
+    layout(size => std.scale(
+      x: scale,
+      y: scale,
+      origin: top + left,
+      reflow: true,
+      block(width: size.width / k, height: size.height / k, body),
+    ))
+  } else if cfg.mode == "ignore" {
+    body
+  } else {
+    layout(size => {
+      // A fattore k il corpo dispone di size / k, che la scala riporta poi
+      // alle dimensioni reali: misurare in quella regione tiene conto sia del
+      // testo che, rimpicciolito, occupa meno righe, sia di cio' che si
+      // impagina per regioni (`columns`), che misurato senza un'altezza
+      // risulterebbe alto quanto la somma delle colonne.
+      //
+      // In una regione con altezza definita `measure` si ferma all'altezza
+      // disponibile: il contenuto che la satura e' quello che sfora. La
+      // regione di prova deve essere alta esattamente quanto quella vera,
+      // altrimenti cio' che si impagina per regioni (`columns`) si dispone in
+      // un altro modo e la misura non dice piu' niente di utile.
+      let too-tall(k) = {
+        let h = size.height / k
+        measure(width: size.width / k, height: h, body).height > h - 0.25pt
+      }
+      if not too-tall(1.0) {
+        body
+      } else if cfg.mode == "error" {
+        panic(
+          "uniud-touying: il contenuto non sta nella slide a pagina "
+            + str(here().page())
+            + ". Riduci il testo, usa `scale:`, oppure passa a overflow: \"shrink\".",
+        )
+      } else if cfg.mode == "mark" {
+        body
+        if cfg.warn {
+          _overflow-warn("contenuto in overflow a pagina " + str(here().page()))
+        }
+        if cfg.marker { _overflow-badge(none) }
+      } else {
+        let lo = cfg.min / 100%
+        if too-tall(lo) {
+          // Nemmeno la soglia basta. Ridurre comunque non salverebbe la
+          // slide: un blocco scalato non si spezza, quindi il testo in
+          // eccesso sparirebbe invece di finire sulla pagina dopo. Meglio
+          // lasciare il contenuto dov'e' e limitarsi a segnalarlo.
+          body
+          if cfg.warn {
+            _overflow-warn(
+              "contenuto in overflow a pagina "
+                + str(here().page())
+                + ": non entra nemmeno al "
+                + str(calc.round(lo * 100))
+                + "%, alleggerisci la slide",
+            )
+          }
+          if cfg.marker { _overflow-badge(none) }
+        } else {
+          // Invariante: `lo` sta, `hi` no. Otto bisezioni bastano a scendere
+          // sotto il mezzo per cento di errore residuo.
+          let hi = 1.0
+          let lo = lo
+          for _ in range(8) {
+            let mid = (lo + hi) / 2
+            if too-tall(mid) { hi = mid } else { lo = mid }
+          }
+          let factor = lo
+          if factor >= _overflow-deadband {
+            // Saturava la regione ma bastava una briciola: e' il caso del
+            // contenuto che la riempie esatta (tipicamente `columns`).
+            // Ridurlo dell'un per cento non serve a nessuno, segnalarlo
+            // ancora meno.
+            return body
+          }
+          std.scale(
+            x: factor * 100%,
+            y: factor * 100%,
+            origin: top + left,
+            reflow: true,
+            block(width: size.width / factor, height: size.height / factor, body),
+          )
+          if cfg.warn {
+            _overflow-warn(
+              "contenuto in overflow a pagina "
+                + str(here().page())
+                + ", ridotto al "
+                + str(calc.round(factor * 100))
+                + "%",
+            )
+          }
+          if cfg.marker { _overflow-badge(factor) }
+        }
+      }
+    })
+  }
+}
+
+/// Cambia la politica di overflow da questo punto del documento in avanti.
+/// Come `wide-mode`, e' l'unico modo di raggiungere le slide che Touying
+/// costruisce da un `== Titolo`:
+///
+/// ```typst
+/// #show: overflow-mode("ignore")     // lascia traboccare
+/// #show: overflow-mode(marker: false) // riduci in silenzio
+/// #show: overflow-mode(auto)          // torna alle impostazioni del tema
+/// ```
+#let overflow-mode(mode: auto, min: auto, marker: auto, warn: auto, ..args) = {
+  let mode = if args.pos().len() > 0 { args.pos().at(0) } else { mode }
+  let override = (:)
+  if mode != auto { override.mode = mode }
+  if min != auto { override.min = min }
+  if marker != auto { override.marker = marker }
+  if warn != auto { override.warn = warn }
+  body => touying-set-config(
+    config-store(overflow-override: override),
+    // Il marcatore cade in fondo alla slide precedente: il cambio vale
+    // dalla successiva.
+    defer: true,
+    body,
   )
 }
 
@@ -461,6 +687,8 @@
   repeat: auto,
   setting: body => body,
   composer: auto,
+  overflow: auto,
+  scale: auto,
   ..bodies,
 ) = touying-slide-wrapper(self => {
   let g = self.store.uniud-layout
@@ -485,7 +713,9 @@
     self: self,
     config: config,
     repeat: repeat,
-    setting: setting,
+    // Il controllo di overflow avvolge il corpo gia' composto, intestazione
+    // della sottoslide inclusa.
+    setting: body => _fit(self, setting(body), overflow: overflow, scale: scale),
     composer: composer,
     ..bodies,
   )
@@ -715,21 +945,53 @@
 // Media helpers
 // -----------------------------------------------------------------------------
 
+// Didascalie: un solo stile per `#figure` e per i media del tema.
+#let _caption-size = 0.7em
+#let _caption-gap = 0.7em
+
+#let _caption(body) = block(
+  width: 100%,
+  align(center, text(size: _caption-size, fill: uniud-dark-gray, body)),
+)
+
+// Dove va il testo che accompagna le immagini negli archetipi corporate:
+// "bottom" sotto l'immagine, "side" nella colonna laterale del master.
+#let _caption-at(self, caption-at) = {
+  if caption-at == auto { self.store.at("caption-at", default: "bottom") } else { caption-at }
+}
+
+// Impila la didascalia sotto il media, dentro l'altezza gia' assegnata: il
+// media prende quello che resta, non quello che vorrebbe.
+#let _with-caption(caption, body) = {
+  if caption == none {
+    body
+  } else {
+    grid(rows: (1fr, auto), row-gutter: _caption-gap, body, _caption(caption))
+  }
+}
+
 /// Corporate image placeholder / media container.
+///
+/// `caption` mette la didascalia sotto l'immagine, nello stesso stile delle
+/// didascalie di `#figure`, e la sottrae all'altezza del riquadro.
 #let media-box(
   width: 100%,
   height: 100%,
   fill: uniud-gray-web,
   inset: 0pt,
+  caption: none,
   ..body,
-) = block(
-  width: width,
-  height: height,
-  fill: fill,
-  inset: inset,
-  clip: true,
-  body.pos().join(),
-)
+) = {
+  let media = block(
+    width: 100%,
+    height: 100%,
+    fill: fill,
+    inset: inset,
+    clip: true,
+    body.pos().join(),
+  )
+  block(width: width, height: height, _with-caption(caption, media))
+}
 
 #let _placed(dx, dy, width, height, body) = place(
   top + left,
@@ -743,7 +1005,14 @@
 // -----------------------------------------------------------------------------
 
 /// "Slide di solo testo": Work Sans Medium 85/88 on columns 5-12.
-#let text-slide(config: (:), role: "body-large", wide: auto, body) = touying-slide-wrapper(self => {
+#let text-slide(
+  config: (:),
+  role: "body-large",
+  wide: auto,
+  overflow: auto,
+  scale: auto,
+  body,
+) = touying-slide-wrapper(self => {
   let g = self.store.uniud-layout
   let t = self.store.uniud-type
   let canvas = block(width: 100%, height: 100%)[
@@ -752,14 +1021,21 @@
       g.anchor,
       _span(g, _body-span(self, wide: wide)),
       _content-height(g),
-      _typeset(t, role, uniud-black, body),
+      _typeset(t, role, uniud-black, _fit(self, body, overflow: overflow, scale: scale)),
     )
   ]
   _canvas-slide(self, config, canvas)
 })
 
 /// "Slide testo + immagini", variant a: text on top, two images below.
-#let text-two-media-slide(config: (:), text-body, left-media, right-media) = touying-slide-wrapper(self => {
+#let text-two-media-slide(
+  config: (:),
+  overflow: auto,
+  scale: auto,
+  text-body,
+  left-media,
+  right-media,
+) = touying-slide-wrapper(self => {
   let g = self.store.uniud-layout
   let t = self.store.uniud-type
   let media-height = _bottom(g) - g.media-top
@@ -769,7 +1045,7 @@
       g.anchor,
       _span(g, 8),
       g.media-top - g.anchor - g.row-gutter,
-      _typeset(t, "body", uniud-black, text-body),
+      _typeset(t, "body", uniud-black, _fit(self, text-body, overflow: overflow, scale: scale)),
     )
     #_placed(_col(g, 5), g.media-top, _span(g, 4), media-height, left-media)
     #_placed(_col(g, 9), g.media-top, _span(g, 4), media-height, right-media)
@@ -777,42 +1053,104 @@
   _canvas-slide(self, config, canvas)
 })
 
-/// "Slide testo + immagini", variant b: caption on the left, one large image.
-#let caption-media-slide(config: (:), caption, media) = touying-slide-wrapper(self => {
+/// "Slide testo + immagini", variant b: one large image with its caption.
+///
+/// `caption-at` sceglie dove va il testo: `bottom` sotto l'immagine (default
+/// del tema), `side` nella colonna di sinistra come nel master PowerPoint.
+#let caption-media-slide(
+  config: (:),
+  caption-at: auto,
+  overflow: auto,
+  scale: auto,
+  caption,
+  media,
+) = touying-slide-wrapper(self => {
   let g = self.store.uniud-layout
   let t = self.store.uniud-type
-  let canvas = block(width: 100%, height: 100%)[
-    #_placed(
-      _col(g, 1),
-      g.anchor,
-      _span(g, 4),
-      _bottom(g) - g.anchor,
-      _typeset(t, "body", uniud-black, caption),
-    )
-    #_placed(_col(g, 5), g.media-anchor, _span(g, 8), _bottom(g) - g.media-anchor, media)
-  ]
+  let at = _caption-at(self, caption-at)
+  let text-body(body) = _typeset(
+    t,
+    "body",
+    uniud-black,
+    _fit(self, body, overflow: overflow, scale: scale),
+  )
+  let canvas = if at == "side" {
+    block(width: 100%, height: 100%)[
+      #_placed(_col(g, 1), g.anchor, _span(g, 4), _bottom(g) - g.anchor, text-body(caption))
+      #_placed(_col(g, 5), g.media-anchor, _span(g, 8), _bottom(g) - g.media-anchor, media)
+    ]
+  } else {
+    block(width: 100%, height: 100%)[
+      #_placed(
+        _col(g, 1),
+        g.anchor,
+        _span(g, g.columns),
+        _bottom(g) - g.anchor,
+        grid(
+          rows: (1fr, auto),
+          row-gutter: _caption-gap,
+          media,
+          text-body(caption),
+        ),
+      )
+    ]
+  }
   _canvas-slide(self, config, canvas)
 })
 
-/// "Slide testo + immagini", variant c: caption on the left, 2x2 image grid.
-#let caption-grid-slide(config: (:), caption, a, b, c, d) = touying-slide-wrapper(self => {
+/// "Slide testo + immagini", variant c: 2x2 image grid with its caption.
+#let caption-grid-slide(
+  config: (:),
+  caption-at: auto,
+  overflow: auto,
+  scale: auto,
+  caption,
+  a,
+  b,
+  c,
+  d,
+) = touying-slide-wrapper(self => {
   let g = self.store.uniud-layout
   let t = self.store.uniud-type
-  let row-height = (_bottom(g) - g.media-anchor - g.row-gutter) / 2
-  let row2 = g.media-anchor + row-height + g.row-gutter
-  let canvas = block(width: 100%, height: 100%)[
-    #_placed(
-      _col(g, 1),
-      g.anchor,
-      _span(g, 4),
-      _bottom(g) - g.anchor,
-      _typeset(t, "body", uniud-black, caption),
-    )
-    #_placed(_col(g, 5), g.media-anchor, _span(g, 4), row-height, a)
-    #_placed(_col(g, 9), g.media-anchor, _span(g, 4), row-height, b)
-    #_placed(_col(g, 5), row2, _span(g, 4), row-height, c)
-    #_placed(_col(g, 9), row2, _span(g, 4), row-height, d)
-  ]
+  let at = _caption-at(self, caption-at)
+  let text-body(body) = _typeset(
+    t,
+    "body",
+    uniud-black,
+    _fit(self, body, overflow: overflow, scale: scale),
+  )
+  let canvas = if at == "side" {
+    let row-height = (_bottom(g) - g.media-anchor - g.row-gutter) / 2
+    let row2 = g.media-anchor + row-height + g.row-gutter
+    block(width: 100%, height: 100%)[
+      #_placed(_col(g, 1), g.anchor, _span(g, 4), _bottom(g) - g.anchor, text-body(caption))
+      #_placed(_col(g, 5), g.media-anchor, _span(g, 4), row-height, a)
+      #_placed(_col(g, 9), g.media-anchor, _span(g, 4), row-height, b)
+      #_placed(_col(g, 5), row2, _span(g, 4), row-height, c)
+      #_placed(_col(g, 9), row2, _span(g, 4), row-height, d)
+    ]
+  } else {
+    block(width: 100%, height: 100%)[
+      #_placed(
+        _col(g, 1),
+        g.anchor,
+        _span(g, g.columns),
+        _bottom(g) - g.anchor,
+        grid(
+          rows: (1fr, auto),
+          row-gutter: _caption-gap,
+          grid(
+            columns: (1fr, 1fr),
+            rows: (1fr, 1fr),
+            column-gutter: _caption-gap,
+            row-gutter: _caption-gap,
+            a, b, c, d,
+          ),
+          text-body(caption),
+        ),
+      )
+    ]
+  }
   _canvas-slide(self, config, canvas)
 })
 
@@ -1026,6 +1364,10 @@
 }
 
 #let _code-steps-fn(self: none, start: 1, steps: (), ..args, body) = {
+  // Senza rivelazione i passi decadono: resta il codice, senza evidenziazioni.
+  if self.store.at("flat", default: false) {
+    return _code-frame(lines: (), ..args.named(), body)
+  }
   let i = calc.clamp(self.subslide - start, 0, steps.len() - 1)
   _code-frame(lines: _code-lines(steps.at(i)), ..args.named(), body)
 }
@@ -1218,11 +1560,28 @@
 
 /// Push a fragment into the background on the given subslides: the opposite
 /// move, useful to make everything else recede around what matters now.
-#let dim-at(subslides, body, alpha: 30%, blur: false) = effect(
-  b => dimmed(b, alpha: alpha, blur: blur),
-  subslides,
+// Passa dal wrapper di Touying invece che da `effect` per una ragione sola:
+// dentro il wrapper c'e' `self`, e quindi si puo' sapere se la rivelazione
+// progressiva e' spenta. Avvolgere `effect` in un `context` non si puo':
+// Touying riconosce i propri marcatori nel corpo della slide e un `context`
+// glieli nasconde.
+#let _dim-at-fn(self: none, subslides: (), alpha: 30%, blur: false, body) = {
+  if self.store.at("flat", default: false) { return body }
+  if utils.check-visible(self.subslide, subslides) {
+    dimmed(body, alpha: alpha, blur: blur)
+  } else {
+    body
+  }
+}
+
+#let dim-at(subslides, body, alpha: 30%, blur: false) = touying-fn-wrapper(
+  _dim-at-fn,
+  subslides: subslides,
+  alpha: alpha,
+  blur: blur,
   body,
 )
+
 
 // The items of a list / enum / terms, whichever way it was written.
 #let _reveal-items(cont) = {
@@ -1273,6 +1632,9 @@
   mode: "current",
   cont,
 ) = {
+  // Senza rivelazione la lista e' una lista: nessun elemento in primo piano,
+  // nessuno sullo sfondo.
+  if self.store.at("flat", default: false) { return cont }
   let current = self.subslide - start
   _reveal-restyle(cont, (i, it) => {
     let done = if mode == "cumulative" { i <= current } else { i == current }
@@ -1473,7 +1835,14 @@
 /// from the first to the last column — useful for code, tables and wide
 /// diagrams, which do not fit the corporate text measure — and `false` brings a
 /// single slide back into that measure inside an otherwise wide deck.
-#let content-slide(config: (:), title: none, wide: auto, body) = touying-slide-wrapper(self => {
+#let content-slide(
+  config: (:),
+  title: none,
+  wide: auto,
+  overflow: auto,
+  scale: auto,
+  body,
+) = touying-slide-wrapper(self => {
   let g = self.store.uniud-layout
   let t = self.store.uniud-type
   let canvas = block(width: 100%, height: 100%)[
@@ -1482,22 +1851,29 @@
       g.anchor,
       _span(g, _body-span(self, wide: wide)),
       _content-height(g),
-      {
-        if title != none {
-          block(below: .8em, _typeset(t, "heading", self.colors.primary, title))
-        }
-        body
-      },
+      _fit(
+        self,
+        {
+          if title != none {
+            block(below: .8em, _typeset(t, "heading", self.colors.primary, title))
+          }
+          body
+        },
+        overflow: overflow,
+        scale: scale,
+      ),
     )
   ]
   _canvas-slide(self, config, canvas)
 })
 
 /// `content-slide` pinned to the whole width.
-#let wide-slide(config: (:), title: none, body) = content-slide(
+#let wide-slide(config: (:), title: none, overflow: auto, scale: auto, body) = content-slide(
   config: config,
   title: title,
   wide: true,
+  overflow: overflow,
+  scale: scale,
   body,
 )
 
@@ -1560,9 +1936,39 @@
   // Flatten every slide to its last subslide: one page per slide, for the PDF
   // that gets handed out or printed.
   handout: false,
+  // Rivelazione progressiva. Con `false` ogni slide sta su una pagina sola e
+  // tutto e' in chiaro: niente passi, niente elementi sullo sfondo, niente
+  // evidenziazioni di percorso. Implica `handout: true`.
+  incremental: true,
+  // Cosa fare quando il contenuto non sta nell'area di testo: "shrink" lo
+  // riduce fino a `overflow-min` e lo segnala, "mark" segnala soltanto,
+  // "error" ferma la compilazione, "ignore" lascia traboccare.
+  // Dove vanno le didascalie degli archetipi con immagini: "bottom" sotto
+  // l'immagine, "side" nella colonna laterale come nel master PowerPoint.
+  caption-at: "bottom",
+  // Dati della carta intestata per la dispensa A4: dipartimento, indirizzo,
+  // dicitura istituzionale. Sulle slide non ha effetto — le vede solo
+  // `uniud-handout.typ`.
+  letterhead: (:),
+  // Numerazione delle slide: `none` non numera, una stringa e' un modello di
+  // `numbering` ("1", "I"; con due simboli, "1/1", riceve numero e totale),
+  // una funzione riceve `(numero, totale)`.
+  slide-numbering: none,
+  overflow: "shrink",
+  overflow-min: 70%,
+  overflow-marker: true,
+  overflow-warn: true,
   ..args,
   body,
 ) = {
+  // `--input uniud-incremental=false` spegne i passi senza toccare il
+  // documento, come `--input uniud-handout=a4` per la dispensa: cosi' le
+  // attivita' dell'editor valgono per qualunque lezione.
+  let incremental = if sys.inputs.at("uniud-incremental", default: none) == "false" {
+    false
+  } else {
+    incremental
+  }
   let layout = if layout == auto { uniud-layout(style: style) } else { layout }
   let style = layout.style
   // 44 pt on the corporate canvas, whatever the slide height actually is.
@@ -1592,7 +1998,8 @@
   show cite: set text(fill: primary)
   // Slides rarely need numbered figures; `set figure(numbering: "1")` restores it.
   set figure(numbering: none)
-  show figure.caption: set text(size: .7em, fill: uniud-dark-gray)
+  set figure(gap: _caption-gap)
+  show figure.caption: set text(size: _caption-size, fill: uniud-dark-gray)
   show heading.where(level: 3): set text(size: 1em, weight: "bold", fill: primary)
 
   show: touying-slides.with(
@@ -1612,7 +2019,7 @@
       receive-body-for-new-section-slide-fn: true,
       zero-margin-header: true,
       zero-margin-footer: true,
-      handout: handout,
+      handout: handout or not incremental,
     ),
     config-methods(
       alert: utils.alert-with-primary-color,
@@ -1630,6 +2037,16 @@
       section-variants: section-variants,
       section-numbering: section-numbering,
       wide: wide,
+      flat: not incremental,
+      caption-at: caption-at,
+      slide-numbering: slide-numbering,
+      overflow: (
+        mode: overflow,
+        min: overflow-min,
+        marker: overflow-marker,
+        warn: overflow-warn,
+      ),
+      overflow-override: (:),
       meta: meta,
       subslide-preamble: block(
         below: (60 / 54 - cap-height + 0.6) * 1em,
@@ -1641,3 +2058,52 @@
 
   body
 }
+
+// -----------------------------------------------------------------------------
+// Modalità dispensa
+// -----------------------------------------------------------------------------
+//
+// Con `--input uniud-handout=a4` le stesse sorgenti si compongono come
+// documento A4 su carta intestata invece che come slide. I nomi pubblici
+// vengono rilegati qui in coda alle versioni di `uniud-handout.typ`: `import *`
+// esporta l'ultima definizione, quindi la lezione non cambia di una riga.
+//
+//   typst compile --input uniud-handout=a4 --font-path fonts lezione.typ
+
+#import "uniud-handout.typ"
+
+#let _handout-a4 = sys.inputs.at("uniud-handout", default: none) == "a4"
+
+#let uniud-theme = if _handout-a4 { uniud-handout.uniud-theme } else { uniud-theme }
+#let slide = if _handout-a4 { uniud-handout.slide } else { slide }
+#let title-slide = if _handout-a4 { uniud-handout.title-slide } else { title-slide }
+#let section-slide = if _handout-a4 { uniud-handout.section-slide } else { section-slide }
+#let new-section-slide = if _handout-a4 { uniud-handout.new-section-slide } else { new-section-slide }
+#let next-section = if _handout-a4 { uniud-handout.next-section } else { next-section }
+#let content-slide = if _handout-a4 { uniud-handout.content-slide } else { content-slide }
+#let wide-slide = if _handout-a4 { uniud-handout.wide-slide } else { wide-slide }
+#let text-slide = if _handout-a4 { uniud-handout.text-slide } else { text-slide }
+#let text-two-media-slide = if _handout-a4 { uniud-handout.text-two-media-slide } else { text-two-media-slide }
+#let caption-media-slide = if _handout-a4 { uniud-handout.caption-media-slide } else { caption-media-slide }
+#let caption-grid-slide = if _handout-a4 { uniud-handout.caption-grid-slide } else { caption-grid-slide }
+#let mosaic-slide = if _handout-a4 { uniud-handout.mosaic-slide } else { mosaic-slide }
+#let full-media-slide = if _handout-a4 { uniud-handout.full-media-slide } else { full-media-slide }
+#let focus-slide = if _handout-a4 { uniud-handout.focus-slide } else { focus-slide }
+#let quote-slide = if _handout-a4 { uniud-handout.quote-slide } else { quote-slide }
+#let outline-slide = if _handout-a4 { uniud-handout.outline-slide } else { outline-slide }
+#let references-slide = if _handout-a4 { uniud-handout.references-slide } else { references-slide }
+#let media-box = if _handout-a4 { uniud-handout.media-box } else { media-box }
+#let focus-list = if _handout-a4 { uniud-handout.focus-list } else { focus-list }
+#let dimmed = if _handout-a4 { uniud-handout.dimmed } else { dimmed }
+#let alert-at = if _handout-a4 { uniud-handout.alert-at } else { alert-at }
+#let mark-at = if _handout-a4 { uniud-handout.mark-at } else { mark-at }
+#let strike-at = if _handout-a4 { uniud-handout.strike-at } else { strike-at }
+#let dim-at = if _handout-a4 { uniud-handout.dim-at } else { dim-at }
+#let wide-mode = if _handout-a4 { uniud-handout.wide-mode } else { wide-mode }
+#let overflow-mode = if _handout-a4 { uniud-handout.overflow-mode } else { overflow-mode }
+
+// Questi vengono da Touying, non da qui: in modalità dispensa li copriamo,
+// perché `import *` di questo file arriva dopo quello di Touying.
+#let speaker-note = if _handout-a4 { uniud-handout.speaker-note } else { speaker-note }
+#let pause = if _handout-a4 { uniud-handout.pause } else { pause }
+#let meanwhile = if _handout-a4 { uniud-handout.meanwhile } else { meanwhile }

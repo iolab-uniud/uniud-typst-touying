@@ -5,7 +5,9 @@
 #
 #   ./scripts/install-local.sh              # installa la versione di typst.toml
 #   ./scripts/install-local.sh --link       # collegamento simbolico invece di copia
+#   ./scripts/install-local.sh --prune      # installa e toglie le altre versioni
 #   ./scripts/install-local.sh --uninstall  # rimuove la versione installata
+#   ./scripts/install-local.sh --uninstall --all  # rimuove tutte le versioni
 #   ./scripts/install-local.sh --list       # mostra cosa è installato
 #
 # Opzioni: --namespace NOME (default: local), --data-dir DIR per scegliere a
@@ -26,14 +28,16 @@ usage() {
     cat <<'USAGE'
 Uso:
   ./scripts/install-local.sh [opzioni]
-  ./scripts/install-local.sh --uninstall [opzioni]
+  ./scripts/install-local.sh --uninstall [--all] [opzioni]
   ./scripts/install-local.sh --list [opzioni]
 
 Opzioni:
   --link             installa un collegamento simbolico al repo invece di una copia
+  --prune            dopo l'installazione rimuove le altre versioni nel namespace
   --namespace NOME   namespace del pacchetto (default: local)
   --data-dir DIR     cartella dati di Typst (default: quella del sistema)
   --uninstall        rimuove la versione installata
+  --all              con --uninstall: rimuove tutte le versioni, non solo questa
   --list             elenca le versioni installate nel namespace
 USAGE
     exit 1
@@ -46,10 +50,14 @@ NAMESPACE="local"
 DATA_DIR=""
 MODE="install"
 LINK=0
+PRUNE=0
+ALL=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --link) LINK=1; shift ;;
+        --prune) PRUNE=1; shift ;;
+        --all) ALL=1; shift ;;
         --uninstall) MODE="uninstall"; shift ;;
         --list) MODE="list"; shift ;;
         --namespace) [[ $# -ge 2 ]] || usage; NAMESPACE="$2"; shift 2 ;;
@@ -94,6 +102,16 @@ case "$MODE" in
         exit 0
         ;;
     uninstall)
+        if [[ "$ALL" -eq 1 ]]; then
+            [[ -d "$PKG_ROOT" ]] || die "niente da rimuovere in $PKG_ROOT"
+            for d in "$PKG_ROOT"/*; do
+                [[ -e "$d" || -L "$d" ]] || continue
+                rm -rf "$d"
+                echo "Rimosso $d"
+            done
+            rmdir "$PKG_ROOT" 2>/dev/null || true
+            exit 0
+        fi
         [[ -e "$DEST" || -L "$DEST" ]] || die "non installato: $DEST"
         rm -rf "$DEST"
         rmdir "$PKG_ROOT" 2>/dev/null || true
@@ -120,6 +138,17 @@ if [[ "$LINK" -eq 1 ]]; then
 else
     ./scripts/assemble-package.sh "$DEST"
     echo "Installato $DEST"
+fi
+
+# Le altre versioni si tolgono solo a installazione riuscita: un errore non
+# deve lasciare il namespace vuoto.
+if [[ "$PRUNE" -eq 1 ]]; then
+    for d in "$PKG_ROOT"/*; do
+        [[ -e "$d" || -L "$d" ]] || continue
+        [[ "$(basename "$d")" != "$VERSION" ]] || continue
+        rm -rf "$d"
+        echo "Rimossa versione precedente $(basename "$d")"
+    done
 fi
 
 cat <<EOF
