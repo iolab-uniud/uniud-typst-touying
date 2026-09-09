@@ -1,0 +1,44 @@
+name: Release
+
+# Un tag vN.N.N pubblica la release con i PDF di esempio e i pacchetti
+# installabili. La versione del tag deve coincidere con quella in typst.toml.
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TYPST_VERSION: "0.15.1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installa Typst
+        run: |
+          curl -fsSL "https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/typst-x86_64-unknown-linux-musl.tar.xz" | tar -xJ
+          echo "$PWD/typst-x86_64-unknown-linux-musl" >> "$GITHUB_PATH"
+
+      - name: Il tag deve coincidere con la versione in typst.toml
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          MANIFEST="$(grep -m1 '^version' typst.toml | cut -d'"' -f2)"
+          if [ "$TAG" != "$MANIFEST" ]; then
+            echo "::error::il tag dichiara $TAG, typst.toml dichiara $MANIFEST"
+            exit 1
+          fi
+
+      - name: Compila i demo e impacchetta
+        run: ./scripts/build-release.sh "${GITHUB_REF_NAME#v}"
+
+      - name: Pubblica la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file dist/NOTE-RELEASE.md \
+            dist/*.pdf dist/*.zip dist/thumbnail.png

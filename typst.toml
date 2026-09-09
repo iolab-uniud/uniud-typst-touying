@@ -1,0 +1,29 @@
+[package]
+name = "uniud-touying"
+version = "0.1.0"
+entrypoint = "uniud-theme.typ"
+authors = ["Luca Di Gaspero"]
+license = "CC-BY-4.0 AND MIT-0"
+description = "Tema Touying per le presentazioni dell'Università degli Studi di Udine, derivato dai due master PowerPoint d'Ateneo."
+repository = "https://github.com/iolab-uniud/uniud-typst-touying"
+keywords = ["presentation", "slides", "touying", "uniud", "lecture"]
+categories = ["presentation"]
+disciplines = ["education"]
+compiler = "0.13.1"
+exclude = [
+  # i demo, gli script e la CI servono nel repository, non nel pacchetto
+  "/demo*.typ",
+  "/demo*.pdf",
+  "/demo-refs.bib",
+  "/dist",
+  "/scripts",
+  "/.github",
+  # i font vengono copiati dentro `template/fonts` in fase di build:
+  # Typst non li carica dai pacchetti, ma nella cartella di un progetto sì
+  "/fonts",
+]
+
+[template]
+path = "template"
+entrypoint = "main.typ"
+thumbnail = "thumbnail.png"

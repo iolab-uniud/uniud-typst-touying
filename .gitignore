@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# cartelle di lavoro dell'app Claude
+Claude outputs/
+
+dist/
+
+# PDF: i demo sono versionati perché sono il riferimento visivo del tema,
+# tutto il resto è output di compilazione
+*.pdf
+!demo.pdf
+!demo-01.pdf
+!demo-auto-sections.pdf
+!demo-teaching.pdf
+!demo-teaching-wide.pdf
