@@ -490,6 +490,107 @@ Si articola in tre passi.
 funzioni di Touying (`#meanwhile`, `#only`, `#uncover`, i contatori di
 sottoslide): il tema non le tocca.
 
+### Enfasi temporanea su un frammento
+
+`#pause` rivela; queste quattro funzioni invece *cambiano* un frammento che sta
+già sulla slide, solo nei passi indicati, e poi lo lasciano tornare com'era.
+Prendono la stessa sintassi di `#only` — `2`, `(1, 3)`, `"2-4"`, `"3-"`.
+
+| funzione | cosa fa nei passi indicati |
+| --- | --- |
+| `#alert-at("2")[...]` | lo colora di blu corporate |
+| `#mark-at("3")[...]` | ci passa sopra l'evidenziatore |
+| `#strike-at("4")[...]` | lo barra: un'affermazione che si corregge |
+| `#dim-at("4-")[...]` | lo manda in secondo piano, per far risaltare il resto |
+
+```typst
+Il costo è #alert-at("2")[$Theta(n log n)$] nel caso peggiore,
+al prezzo di #mark-at("3")[$Theta(n)$] di memoria ausiliaria.
+
+Quicksort in place #strike-at("4")[è stabile]: non lo è.
+```
+
+`alert-at` accetta `fill:` per un colore diverso, `mark-at` il colore
+dell'evidenziatore.
+
+### Elenchi a fuoco
+
+`#focus-list` percorre un elenco un item alla volta tenendo *tutto* sulla
+slide: l'item corrente resta in inchiostro pieno, gli altri passano in secondo
+piano. A differenza di `#pause`, la forma e la lunghezza dell'elenco si vedono
+dal primo passo e la pagina non si ricompone mai sotto gli occhi di chi guarda.
+
+```typst
+#focus-list[
+  - *Divide*: il problema si spezza in due metà.
+  - *Impera*: ogni metà si ordina ricorsivamente.
+  - *Combina*: la fusione ricompone il vettore.
+]
+```
+
+| parametro | |
+| --- | --- |
+| `mode` | `"current"` (default) tiene a fuoco solo l'item corrente; `"cumulative"` tiene anche quelli già percorsi |
+| `alpha` | quanto inchiostro resta agli item in secondo piano (default `30%`) |
+| `blur` | li sfoca invece di schiarirli |
+| `weight` | peso dell'item corrente (default `"medium"`, `none` per lasciarlo stare) |
+| `start` | passo del primo item; `auto` riprende dalla posizione corrente |
+
+Funziona su elenchi puntati, numerati e `terms`. Lo schiarimento è un velo del
+colore della pagina steso sopra il contenuto, non un cambio di colore del
+testo: così sbiadisce allo stesso modo anche le parti in grassetto, in blu o
+dentro un frame di codice, e in stampa bianco e nero diventa grigio.
+
+Sul `blur`: **Typst non ha un filtro di sfocatura**. L'effetto è simulato
+disegnando il contenuto più volte, ogni copia spostata di una frazione di em,
+senza niente di nitido sotto. Alla distanza di lettura funziona, ma nel PDF il
+testo c'è davvero sedici volte: selezione, copia-incolla e ricerca vedono tutte
+le copie. Per questo non è il default e conviene riservarlo alle slide in cui
+l'effetto conta davvero.
+
+### Codice passo passo
+
+`code-box` accetta `steps:`, l'equivalente del `data-line-numbers="1|2-3|4"` di
+reveal.js: un elenco di gruppi di righe, uno per passo. `none` come primo
+elemento mostra il codice senza evidenziazioni, poi ogni clic illumina il
+gruppo successivo.
+
+````typst
+#code-box(
+  caption: [merge_sort.py],
+  numbered: true,
+  steps: (none, "1", "2-3", "4-5", "6"),
+)[
+```python
+def merge_sort(a):
+    ...
+```
+]
+````
+
+Ogni gruppo accetta un numero, un elenco (`(2, 5)`), un intervallo (`"2-4"`),
+un intervallo aperto (`"5-"`) o una combinazione (`"1, 4-6"`). Con `highlight:`
+al posto di `steps:` l'evidenziazione è fissa, come prima.
+
+### Handout e note del relatore
+
+`handout: true` nel tema — o `--input handout=true` se la presentazione lo
+legge, come fa `examples/lecture.typ` — appiattisce ogni slide sull'ultimo
+passo: una pagina per slide invece di una per clic, che è quello che serve per
+il PDF da distribuire o da stampare.
+
+```sh
+typst compile --font-path fonts --input handout=true lezione.typ lezione-handout.pdf
+```
+
+`#speaker-note[...]` aggiunge una nota per la vista relatore. Le note non
+compaiono nelle slide; per usarle serve un lettore che le sappia mostrare,
+tipicamente pdfpc, a cui si dà il file estratto dal documento:
+
+```sh
+typst query --root . --field value lezione.typ "<pdfpc-file>" --one > lezione.pdfpc
+```
+
 ---
 
 ## 11. Personalizzazione
@@ -510,6 +611,8 @@ sottoslide): il tema non le tocca.
   section-variant: "cycle",
   section-variants: ("blue", "black", "gray", "white"),
   section-numbering: true,
+  meta: auto,                  // contenuto dei tre ricorrenti
+  handout: false,              // una pagina per slide invece che per passo
   layout: auto,                // vedi sotto
   type-scale: auto,            // vedi sotto
   config-info(...),
@@ -519,6 +622,44 @@ sottoslide): il tema non le tocca.
 Se cambi `font`, aggiorna anche `cap-height`: da lì il tema ricava le
 interlinee e l'allineamento della prima riga sull'ancoraggio (0.66 è il valore
 di Work Sans).
+
+### Cosa scrivere nei ricorrenti
+
+I tre blocchi ricorrenti — quelli nella fascia in alto nello stile 02, in fondo
+alla slide nello stile 01 — nei master corporate portano luogo e data, il
+relatore e la struttura. Per una lezione il relatore è l'informazione meno
+utile dei tre: chi è in aula lo sa già, mentre non sempre ricorda quale lezione
+sta seguendo. Basta quindi dare un `short-title` perché prenda quel posto:
+
+```typst
+config-info(
+  title: [Strutture dati e algoritmi],
+  short-title: [Ordinamento per fusione],   // va nei ricorrenti
+  author: [Prof. Mario Rossi],              // resta sulla slide di copertina
+  ...
+)
+```
+
+Il titolo lungo continua a comparire sulla copertina e nei metadati del PDF: il
+`short-title` serve solo come "titolo corrente", come la testatina di un libro.
+
+Se vuoi decidere tu i tre blocchi, `meta` accetta un elenco di tre voci, ognuna
+una parola chiave o del contenuto esplicito:
+
+```typst
+#show: uniud-theme.with(
+  meta: ("date", "short-title", "institution"),  // il default con short-title
+  ...
+)
+#show: uniud-theme.with(
+  meta: ([Analisi matematica], "short-title", ""),  // corso, lezione, niente
+  ...
+)
+```
+
+Le parole chiave sono `"date"`, `"author"`, `"institution"`, `"title"`,
+`"short-title"`, `"subtitle"`, `"short-subtitle"` e `""` per lasciare vuoto uno
+dei tre. `"short-title"` ricade sul titolo lungo se non ne hai dato uno.
 
 ### Colori
 
@@ -598,10 +739,16 @@ I ruoli sono `title`, `subtitle`, `number`, `body-large`, `body`, `meta`,
 | --- | --- |
 | `callout` | `title`, `accent`, `fill` |
 | `side-by-side` | `gutter`, `align-items`, + blocchi |
-| `code-box` | `caption`, `numbered`, `highlight`, `fill`, `stroke`, `ink`, `size` |
+| `code-box` | `caption`, `numbered`, `highlight`, `steps`, `start`, `fill`, `stroke`, `ink`, `size` |
 | `output-box` | `caption`, `numbered`, `size` |
 | `uniud-table` | argomenti di `table` |
 | `media-box` | `width`, `height`, `fill`, `inset` |
+| `focus-list` | `mode`, `alpha`, `blur`, `weight`, `start` |
+| `alert-at` | sottoslide, `fill` |
+| `mark-at` | sottoslide, `fill` |
+| `strike-at` | sottoslide |
+| `dim-at` | sottoslide, `alpha`, `blur` |
+| `dimmed` | `alpha`, `blur`, `fill` |
 
 ### Configurazione
 

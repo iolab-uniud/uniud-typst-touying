@@ -124,6 +124,29 @@ The manual calls the block "elementi ricorrenti" and uses *intestazione* only
 for their type style (Work Sans Bold 16, uppercase), which is why the theme
 talks about recurring items rather than headers or footers.
 
+**What goes in them.** The masters carry place and date, the speaker and the
+structure. In a lecture the speaker is the least useful of the three — the room
+knows who is talking, and what it does not always remember is which lecture this
+is — so a `short-title` takes that slot as soon as it is given:
+
+```typst
+config-info(
+  title: [Strutture dati e algoritmi],
+  short-title: [Ordinamento per fusione],   // goes in the recurring items
+  author: [Prof. Mario Rossi],              // stays on the cover
+  ...
+)
+```
+
+The long title still heads the cover and the PDF metadata; the short one is the
+running head. `meta:` overrides the three slots outright, each entry a keyword
+(`"date"`, `"author"`, `"institution"`, `"title"`, `"short-title"`, `"subtitle"`,
+`"short-subtitle"`, or `""` for an empty slot) or explicit content:
+
+```typst
+#show: uniud-theme.with(meta: ([Analisi matematica], "short-title", ""), ...)
+```
+
 ## Design system
 
 Both masters are 24384000 x 13716000 EMU, exactly the 1920 x 1080 pt canvas
@@ -308,6 +331,8 @@ Most of them are **elements**: they go inside an ordinary slide, under a
 | `#callout(title: [Teorema])[...]`            | titled block: definitions, theorems, examples, warnings |
 | `#side-by-side[...][...]`                    | two or more blocks abreast, on the column gutter |
 | `#code-box(caption:, numbered:, highlight:)` | code frame with line numbers and emphasised lines |
+| `#focus-list[...]`                           | list walked one item at a time, the current one in full ink |
+| `#alert-at("2")[...]`                        | emphasise a fragment on those steps only |
 | `#output-box(caption:)[...]`                 | the same frame in negative, for a result or a terminal |
 | `#uniud-table(columns: .., ..)`              | table with no vertical rules and a blue header rule |
 | `#media-box[...]`                            | image placeholder |
@@ -399,6 +424,49 @@ Citations are corporate blue and equations use `math-font`. Touying's own
 machinery keeps working: `#pause` for progressive reveals,
 `#alert[...]` for corporate-blue emphasis, `#figure(..., caption: ...)` with
 captions styled and unnumbered (`set figure(numbering: "1")` restores numbers).
+
+## Progressive reveal
+
+`#pause` reveals. These change something already on the slide, for the steps
+given (`2`, `(1, 3)`, `"2-4"`, `"3-"`, Touying's own syntax) and then let it go
+back to normal: `#alert-at` colours a fragment corporate blue, `#mark-at` runs a
+highlighter over it, `#strike-at` strikes it through, `#dim-at` pushes it into
+the background.
+
+`#focus-list` walks a list one item at a time with everything still on the
+slide: the current item keeps its ink, the others recede, so the shape and the
+length of the list are visible from the first step and the page never reflows.
+`mode: "cumulative"` keeps what has already been walked through in the
+foreground as well, `alpha` sets how much ink the backgrounded items keep, and
+`weight` the weight of the current one.
+
+The receding is a veil of the page colour laid over the content, not a change of
+text colour, so bold lead-ins, blue keywords and code frames fade at the same
+rate as plain text, and a black and white print comes out grey. `blur: true`
+defocuses instead — Typst has no blur filter, so it is approximated by drawing
+the content sixteen times, each copy offset by a fraction of an em with nothing
+sharp underneath. It reads as out of focus, but the text really is in the PDF
+sixteen times, so selection, copy-paste and search see every copy: it is opt-in
+for that reason.
+
+`code-box` takes `steps:`, the equivalent of reveal.js's
+`data-line-numbers="1|2-3|4"` — a list of line groups, one per step, where each
+group is a number, an array, `"2-4"`, `"5-"` or `"1, 4-6"`:
+
+```typst
+#code-box(caption: [merge_sort.py], numbered: true, steps: (none, "1", "2-3", "4-5"))[...]
+```
+
+`handout: true` on the theme (or `--input handout=true`, the way the examples
+read it) flattens every slide to its last step: one page per slide, for the PDF
+that gets handed out. `#speaker-note[...]` adds a presenter note; the notes come
+out of the document with
+
+```sh
+typst query --root . --field value lezione.typ "<pdfpc-file>" --one > lezione.pdfpc
+```
+
+for a reader that shows them, pdfpc being the usual one.
 
 ## Examples
 

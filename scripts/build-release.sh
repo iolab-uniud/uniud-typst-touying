@@ -44,6 +44,7 @@ compile sections.pdf          examples/sections.typ
 compile lecture.pdf           examples/lecture.typ
 compile lecture-01.pdf        --input style=01    examples/lecture.typ
 compile lecture-wide.pdf      --input wide=true   examples/lecture.typ
+compile lecture-handout.pdf   --input handout=true examples/lecture.typ
 
 # --- pacchetto locale -------------------------------------------------------
 # Struttura richiesta da Typst: {namespace}/{nome}/{versione}/typst.toml

@@ -261,7 +261,7 @@
   body
 }
 
-#let _info-or-empty(value) = if value == none { [] } else { value }
+#let _info-or-empty(value) = if value == none or value == auto { [] } else { value }
 
 // -----------------------------------------------------------------------------
 // Recurring items ("ricorrenti")
@@ -281,14 +281,53 @@
   )
 }
 
+// What goes in a recurring slot. The corporate masters carry place and date,
+// the speaker and the structure. A lecture is better served by the title of the
+// lecture where the speaker's name would go — the room already knows who is
+// talking, and what it needs is a running head telling it which lecture this is
+// — so `short-title`, once given, takes that slot on its own.
+#let _meta-value(self, key) = {
+  if type(key) != str { return key }
+  let info = self.info
+  // Touying leaves the short forms at `auto` when they are not given.
+  let given(v) = v != none and v != auto
+  let pick(a, b) = {
+    let first = info.at(a, default: none)
+    _info-or-empty(if given(first) { first } else { info.at(b, default: none) })
+  }
+  if key == "date" {
+    utils.display-info-date(self)
+  } else if key == "author" {
+    _info-or-empty(info.at("author", default: none))
+  } else if key == "institution" {
+    _info-or-empty(info.at("institution", default: none))
+  } else if key == "title" {
+    _info-or-empty(info.at("title", default: none))
+  } else if key == "short-title" {
+    pick("short-title", "title")
+  } else if key == "subtitle" {
+    _info-or-empty(info.at("subtitle", default: none))
+  } else if key == "short-subtitle" {
+    pick("short-subtitle", "subtitle")
+  } else if key in ("", "none") {
+    []
+  } else {
+    panic("unknown recurring item \"" + key + "\"")
+  }
+}
+
 // The three recurring blocks, each on its own grid position.
 #let _meta-block(self, ink) = {
   let g = self.store.uniud-layout
-  let values = (
-    utils.display-info-date(self),
-    self.info.author,
-    self.info.institution,
-  )
+  let spec = self.store.at("meta", default: auto)
+  let spec = if spec != auto {
+    spec
+  } else if self.info.at("short-title", default: none) not in (none, auto) {
+    ("date", "short-title", "institution")
+  } else {
+    ("date", "author", "institution")
+  }
+  let values = spec.map(key => _meta-value(self, key))
   for (i, spec) in g.meta-blocks.enumerate() {
     let (column, span) = spec
     place(
@@ -904,10 +943,37 @@
 ///   `fill: none` plus a `stroke` gives the outlined variant on white.
 /// - stroke: optional frame, e.g. `.06em + uniud-gray`.
 /// - size: type size, relative to the surrounding text.
-#let code-box(
+#let _code-lines(spec) = {
+  if spec == none {
+    ()
+  } else if type(spec) == int {
+    (spec,)
+  } else if type(spec) == array {
+    spec.map(_code-lines).flatten()
+  } else if type(spec) == str {
+    spec
+      .split(",")
+      .map(part => part.trim())
+      .filter(part => part != "")
+      .map(part => {
+        if part.contains("-") {
+          let (a, b) = part.split("-")
+          // An open range, "5-", runs to the end of the listing.
+          range(int(a.trim()), if b.trim() == "" { 1000 } else { int(b.trim()) + 1 })
+        } else {
+          (int(part),)
+        }
+      })
+      .flatten()
+  } else {
+    ()
+  }
+}
+
+#let _code-frame(
   caption: none,
   numbered: false,
-  highlight: (),
+  lines: (),
   fill: auto,
   stroke: none,
   ink: uniud-black,
@@ -939,7 +1005,7 @@
         above: 0pt,
         below: 0pt,
         inset: (x: .2em, y: .08em),
-        fill: if it.number in highlight { mark } else { none },
+        fill: if it.number in lines { mark } else { none },
         if numbered {
           grid(
             columns: (1.4em, 1fr),
@@ -957,6 +1023,56 @@
       if negative { body } else { { set raw(theme: _code-theme); body } }
     },
   )
+}
+
+#let _code-steps-fn(self: none, start: 1, steps: (), ..args, body) = {
+  let i = calc.clamp(self.subslide - start, 0, steps.len() - 1)
+  _code-frame(lines: _code-lines(steps.at(i)), ..args.named(), body)
+}
+
+#let code-box(
+  caption: none,
+  numbered: false,
+  highlight: (),
+  steps: none,
+  start: auto,
+  fill: auto,
+  stroke: none,
+  ink: uniud-black,
+  size: .8em,
+  body,
+) = {
+  let args = (
+    caption: caption,
+    numbered: numbered,
+    fill: fill,
+    stroke: stroke,
+    ink: ink,
+    size: size,
+  )
+  if steps == none {
+    _code-frame(lines: _code-lines(highlight), ..args, body)
+  } else if start == auto {
+    touying-fn-wrapper(
+      _code-steps-fn,
+      last-subslide: repetitions => (
+        repetitions + steps.len() - 1,
+        (start: repetitions),
+      ),
+      steps: steps,
+      ..args,
+      body,
+    )
+  } else {
+    touying-fn-wrapper(
+      _code-steps-fn,
+      last-subslide: start + steps.len() - 1,
+      start: start,
+      steps: steps,
+      ..args,
+      body,
+    )
+  }
 }
 
 /// Terminal / result frame: a `code-box` in negative, to pair with the code
@@ -984,6 +1100,242 @@
     align: left,
     ..args
   )
+}
+
+// -----------------------------------------------------------------------------
+// Progressive reveal
+//
+// Touying already knows how to walk a slide through subslides (`#pause`,
+// `uncover`, `only`, `effect`, `item-by-item`). What is missing for a lecture
+// is a *corporate* vocabulary on top of it: emphasise a fragment for one step
+// and let it fall back to normal, walk a list keeping the current item dark and
+// the rest out of the way, light up a group of code lines at a time.
+// -----------------------------------------------------------------------------
+
+/// Fake defocus.
+///
+/// Typst has no blur filter, so this approximates one: the same content is
+/// drawn several times, each copy offset by a fraction of an em on a circle,
+/// with nothing sharp underneath. At reading distance it reads as out of
+/// focus. It stays opt-in because the text really is in the PDF `layers` times:
+/// selection, copy-paste and search see every copy.
+// Is this content block-level, i.e. can it wrap over several lines?
+#let _blockish(body) = (
+  type(body) == content
+    and body.func() in (list, enum, terms, block, table, grid, figure, quote)
+)
+
+// A veil of the page colour laid *over* the content, sized to it. Written by
+// hand rather than with Touying's `cover-with-rect`, which on Typst 0.13
+// evaluates the `title` element and so is unusable there.
+#let _veil(body, fill, inline: false, clip: false) = {
+  let over = place(top + left, rect(width: 100%, height: 100%, fill: fill))
+  if inline {
+    box(clip: clip, { body; over })
+  } else {
+    block(width: 100%, breakable: false, clip: clip, { body; over })
+  }
+}
+
+#let _defocus(body, alpha: 30%, fill: uniud-white, inline: false, radius: .12em, layers: 8, rings: 2) = {
+  // Each copy carries only a fraction of the ink, so that the copies together
+  // add up to `alpha`: 1 - (1 - per)^n = alpha.
+  let copies = layers * rings
+  let per = 1 - calc.pow(1 - alpha / 100%, 1 / copies)
+  // `clip`: the veil covers the copy's box, and the few pixels of a tall glyph
+  // that overshoot it would stay at full ink and read as specks above the line.
+  let veil(b) = _veil(
+    b,
+    utils.update-alpha(fill, 100% - per * 100%),
+    inline: inline,
+    clip: true,
+  )
+  let ghosts = {
+    for r in range(rings) {
+      let rad = radius * (r + 1) / rings
+      for i in range(layers) {
+        let a = 2 * calc.pi * i / layers + r * calc.pi / layers
+        place(dx: rad * calc.cos(a), dy: rad * calc.sin(a), veil(body))
+      }
+    }
+    // Nothing is drawn here: it only reserves the space the copies float over.
+    hide(body)
+  }
+  if inline { box(ghosts) } else { block(width: 100%, ghosts) }
+}
+
+/// Text pushed into the background: lighter, or defocused.
+///
+/// On a block — a list item, a frame — the lightening is a veil of the page
+/// colour laid over the content, so it washes out everything underneath at the
+/// same rate: bold lead-ins, blue keywords, code frames. On an inline fragment,
+/// where a veil would break the line, the text colour is faded instead. Either
+/// way it is transparency, not grey, so it works on any background and prints
+/// as grey in black and white.
+///
+/// - alpha: how much of the content is left, 100 % being untouched.
+/// - blur: defocus it as well.
+/// - fill: colour of the veil; the page colour by default.
+/// - inline: `auto` decides from the content.
+#let dimmed(body, alpha: 30%, blur: false, fill: uniud-white, inline: auto) = {
+  let inline = if inline == auto { not _blockish(body) } else { inline }
+  if blur {
+    // Defocusing spreads the same ink over a wider area, so it needs a little
+    // more of it to read as strongly as the plain veil.
+    _defocus(body, alpha: calc.min(alpha * 1.5, 100%), fill: fill, inline: inline)
+  } else if inline {
+    context text(fill: utils.update-alpha(text.fill, alpha), body)
+  } else {
+    _veil(body, utils.update-alpha(fill, 100% - alpha))
+  }
+}
+
+/// Emphasise a fragment on the given subslides only; before and after it is
+/// ordinary text.
+///
+/// ```typst
+/// Il costo è #alert-at("2")[$Theta(n log n)$] nel caso peggiore.
+/// ```
+///
+/// - subslides: same syntax as Touying's `only` — `2`, `(1, 3)`, `"2-4"`, `"3-"`.
+/// - fill: colour of the emphasis.
+#let alert-at(subslides, body, fill: uniud-blue) = effect(
+  text.with(fill: fill, weight: "medium"),
+  subslides,
+  body,
+)
+
+/// Highlighter over a fragment, on the given subslides only.
+#let mark-at(subslides, body, fill: uniud-blue.lighten(85%)) = effect(
+  highlight.with(fill: fill, extent: .08em),
+  subslides,
+  body,
+)
+
+/// Strike a fragment through on the given subslides — a claim being corrected,
+/// a step being cancelled out.
+#let strike-at(subslides, body) = effect(strike, subslides, body)
+
+/// Push a fragment into the background on the given subslides: the opposite
+/// move, useful to make everything else recede around what matters now.
+#let dim-at(subslides, body, alpha: 30%, blur: false) = effect(
+  b => dimmed(b, alpha: alpha, blur: blur),
+  subslides,
+  body,
+)
+
+// The items of a list / enum / terms, whichever way it was written.
+#let _reveal-items(cont) = {
+  if utils.is-sequence(cont) {
+    cont.children.filter(c => (
+      type(c) == content and c.func() in (list.item, enum.item, terms.item)
+    ))
+  } else if type(cont) == content and cont.func() in (list, enum, terms) {
+    cont.children
+  } else {
+    ()
+  }
+}
+
+// Rebuild the container with the styled items, keeping its own settings.
+#let _reveal-restyle(cont, style) = {
+  let one(item, time) = if item.func() == terms.item {
+    terms.item(style(time, item.term), style(time, item.description))
+  } else {
+    utils.reconstruct(item, style(time, item.body))
+  }
+  if utils.is-sequence(cont) {
+    let i = 0
+    let out = ()
+    for child in cont.children {
+      if type(child) == content and child.func() in (list.item, enum.item, terms.item) {
+        out.push(one(child, i))
+        i += 1
+      } else {
+        out.push(child)
+      }
+    }
+    out.sum(default: [])
+  } else {
+    utils.reconstruct-table-like(
+      cont,
+      cont.children.enumerate().map(((i, item)) => one(item, i)),
+    )
+  }
+}
+
+#let _focus-list-fn(
+  self: none,
+  start: 1,
+  alpha: 30%,
+  blur: false,
+  weight: "medium",
+  mode: "current",
+  cont,
+) = {
+  let current = self.subslide - start
+  _reveal-restyle(cont, (i, it) => {
+    let done = if mode == "cumulative" { i <= current } else { i == current }
+    if done {
+      if i == current and weight != none { text(weight: weight, it) } else { it }
+    } else {
+      // A list item is block-level: it can wrap, so it takes the veil.
+      dimmed(it, alpha: alpha, blur: blur, inline: false)
+    }
+  })
+}
+
+/// A list walked one item at a time, with the current item in full ink and the
+/// others pushed into the background.
+///
+/// Unlike Touying's `item-by-item`, nothing is hidden: the whole list is on the
+/// slide from the first step, so its shape and length are visible and the page
+/// never reflows. What changes is where the eye is sent.
+///
+/// ```typst
+/// #focus-list[
+///   - Divide
+///   - Impera
+///   - Combina
+/// ]
+/// #focus-list(mode: "cumulative", blur: true)[ ... ]
+/// ```
+///
+/// - start: subslide of the first item; `auto` continues from the current
+///   `#pause` position.
+/// - mode: `"current"` keeps only the current item in the foreground,
+///   `"cumulative"` keeps everything already walked through.
+/// - alpha: how much ink is left on the backgrounded items.
+/// - blur: defocus them instead of lightening them.
+/// - weight: weight of the current item; `none` leaves it alone.
+#let focus-list(
+  start: auto,
+  mode: "current",
+  alpha: 30%,
+  blur: false,
+  weight: "medium",
+  body,
+) = {
+  let n = _reveal-items(body).len()
+  let args = (alpha: alpha, blur: blur, weight: weight, mode: mode)
+  if n == 0 {
+    body
+  } else if start == auto {
+    touying-fn-wrapper(
+      _focus-list-fn,
+      last-subslide: repetitions => (repetitions + n - 1, (start: repetitions)),
+      ..args,
+      body,
+    )
+  } else {
+    touying-fn-wrapper(
+      _focus-list-fn,
+      last-subslide: start + n - 1,
+      start: start,
+      ..args,
+      body,
+    )
+  }
 }
 
 /// Agenda slide listing the level-1 sections, numbered like the section slides.
@@ -1200,6 +1552,14 @@
   section-variants: ("blue", "black", "gray", "white"),
   section-numbering: true,
   wide: false,
+  // Contents of the three recurring blocks: keywords ("date", "author",
+  // "institution", "title", "short-title", "subtitle", "" for an empty slot) or
+  // explicit content. `auto` follows the masters, except that a deck with a
+  // `short-title` puts it where the speaker would be.
+  meta: auto,
+  // Flatten every slide to its last subslide: one page per slide, for the PDF
+  // that gets handed out or printed.
+  handout: false,
   ..args,
   body,
 ) = {
@@ -1252,6 +1612,7 @@
       receive-body-for-new-section-slide-fn: true,
       zero-margin-header: true,
       zero-margin-footer: true,
+      handout: handout,
     ),
     config-methods(
       alert: utils.alert-with-primary-color,
@@ -1269,6 +1630,7 @@
       section-variants: section-variants,
       section-numbering: section-numbering,
       wide: wide,
+      meta: meta,
       subslide-preamble: block(
         below: (60 / 54 - cap-height + 0.6) * 1em,
         _typeset(t, "heading", primary, utils.display-current-heading(level: 2)),

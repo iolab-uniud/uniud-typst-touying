@@ -47,6 +47,7 @@ ESEMPI = [
         ("lecture.pdf", "elementi didattici: indice, colonne, callout, codice, formule, tabelle, bibliografia"),
         ("lecture-01.pdf", "la stessa lezione nello stile 01"),
         ("lecture-wide.pdf", "misura del testo a tutta larghezza"),
+        ("lecture-handout.pdf", "la stessa lezione in handout: una pagina per slide invece che per passo"),
     ]),
 ]
 

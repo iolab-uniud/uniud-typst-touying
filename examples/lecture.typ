@@ -5,6 +5,7 @@
 //   typst compile --root .. lecture.typ
 //   typst compile --root .. --input style=01 lecture.typ lecture-01.pdf
 //   typst compile --root .. --input wide=true lecture.typ lecture-wide.pdf
+//   typst compile --root .. --input handout=true lecture.typ lecture-handout.pdf
 
 #import "@preview/touying:0.7.4": *
 #import "../uniud-theme.typ": *
@@ -14,10 +15,15 @@
   aspect-ratio: sys.inputs.at("ratio", default: "16-9"),
   // `wide: true` lets ordinary `== Titolo` slides use the whole width.
   wide: sys.inputs.at("wide", default: "false") == "true",
+  // One page per slide instead of one per step, for the handout.
+  handout: sys.inputs.at("handout", default: "false") == "true",
   font: "Work Sans",
   config-info(
     title: [Strutture dati e algoritmi],
     subtitle: [Lezione 7 — Ordinamento per fusione],
+    // Nei ricorrenti prende il posto del relatore: in aula serve sapere che
+    // lezione è, non chi parla.
+    short-title: [Ordinamento per fusione],
     author: [Prof. Mario Rossi],
     date: [Udine, 22 settembre 2023],
     institution: [Dipartimento Politecnico di Ingegneria e Architettura],
@@ -43,6 +49,33 @@ Il paradigma si articola in tre passi.
 - *Impera*: si risolvono i sottoproblemi ricorsivamente.
 #pause
 - *Combina*: si ricompongono le soluzioni parziali.
+
+== Elenco a fuoco
+
+L'elenco resta tutto sulla slide: cambia dove va l'occhio.
+
+#focus-list[
+  - *Divide*: il problema si spezza in due metà.
+  - *Impera*: ogni metà si ordina ricorsivamente.
+  - *Combina*: la fusione ricompone il vettore ordinato.
+]
+
+== Elenco a fuoco, cumulativo e sfocato
+
+#focus-list(mode: "cumulative", blur: true)[
+  - Il caso base è il vettore di un solo elemento.
+  - La ricorsione dimezza a ogni livello: $log_2 n$ livelli.
+  - Ogni livello costa $Theta(n)$ confronti, da cui $Theta(n log n)$.
+]
+
+== Enfasi su un frammento
+
+Il costo di merge sort è #alert-at("2")[$Theta(n log n)$] nel caso peggiore,
+al prezzo di #mark-at("3")[$Theta(n)$] di memoria ausiliaria.
+
+Quicksort in place #strike-at("4")[è stabile]: non lo è.
+
+#dim-at("4-")[Questo dettaglio esce di scena quando arriviamo al confronto.]
 
 == Testo su due colonne
 
@@ -109,6 +142,28 @@ def merge_sort(a):
     left, right = merge_sort(a[:m]), merge_sort(a[m:])
     return merge(left, right)
 ```
+]
+
+== Codice commentato passo passo
+
+#code-box(
+  caption: [merge_sort.py],
+  numbered: true,
+  // Come il `data-line-numbers="1|2-3|4-5|6"` di reveal.js.
+  steps: (none, "1", "2-3", "4-5", "6"),
+)[
+```python
+def merge_sort(a):
+    if len(a) <= 1:
+        return a
+    m = len(a) // 2
+    left, right = merge_sort(a[:m]), merge_sort(a[m:])
+    return merge(left, right)
+```
+]
+
+#speaker-note[
+  Sul passo 4 fermarsi: è lì che si paga la memoria ausiliaria.
 ]
 
 == Due varianti del frame

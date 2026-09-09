@@ -11,3 +11,6 @@ site/
 # I PDF sono output di compilazione: quelli degli esempi li costruisce la CI e
 # finiscono fra gli allegati della release, non nel repository.
 *.pdf
+
+# configurazione locale dell'editor
+.vscode/
