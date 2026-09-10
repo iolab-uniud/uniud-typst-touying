@@ -9,7 +9,7 @@
 // oppure installali una volta sola nel sistema.
 
 #import "@preview/touying:0.7.4": *
-#import "@local/uniud-touying:0.3.1": *
+#import "@local/uniud-touying:0.3.2": *
 
 #show: uniud-theme.with(
   style: "02", // "02"/"top" con la fascia blu, "01"/"bottom" con i ricorrenti in basso

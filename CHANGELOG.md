@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2 - 2026-09-10
+
+- Il wordmark UNI/UD del «segue foglio» ora usa lo stesso peso Gotham Bold (o Work Sans SemiBold) dell'acronimo di dipartimento, anziché un peso diverso non conforme al manuale
+- Aggiunto il parametro `display-weight` al tema handout per impostare esplicitamente il peso dei marchi composti quando si usa Gotham
+
 ## Non rilasciato
 
 - Il wordmark UNI/UD del «segue foglio» della dispensa usa lo stesso peso dell'acronimo di dipartimento: il manuale li vuole entrambi in Gotham Bold, reso in Work Sans SemiBold quando Gotham non c'è. Prima era in Black, e accanto all'acronimo risultava troppo pesante. Il peso è configurabile con `display-weight`, accanto a `display-font`.
