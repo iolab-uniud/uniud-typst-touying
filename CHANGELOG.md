@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3 - 2026-09-11
+
+- Migliorato lo stile dello handout, con layout e formattazione più curati e coerenti con il tema
+
 ## 0.3.2 - 2026-09-10
 
 - Il wordmark UNI/UD del «segue foglio» ora usa lo stesso peso Gotham Bold (o Work Sans SemiBold) dell'acronimo di dipartimento, anziché un peso diverso non conforme al manuale
