@@ -50,7 +50,9 @@
   continuation-width: 21.3mm, // wordmark UNI/UD del 'segue foglio'
   page-number-left: 176mm,
   footer-bottom: 15mm,
-  title-anchor: 33.3%, // "mozzo 1/3 di pagina" della p. 073
+  // Conservato per compatibilita' con le configurazioni esistenti; la
+  // dispensa non usa piu' il posizionamento da lettera.
+  title-anchor: 33.3%,
 ) = (
   margin-x: margin-x,
   margin-top: margin-top,
@@ -99,6 +101,8 @@
 #let _letterhead = state("uniud-letterhead", (:))
 #let _display-font = state("uniud-display-font", uniud-display-font)
 #let _display-weight = state("uniud-display-weight", uniud-display-weight)
+#let _deck-started = state("uniud-handout-deck-started", false)
+#let _handout-info = state("uniud-handout-info", ())
 
 // Cap height del Work Sans: le interlinee del manuale sono espresse come
 // "corpo/interlinea", e con l'ancoraggio alla linea delle maiuscole lo spazio
@@ -188,6 +192,12 @@
   body,
 )
 
+#let _display(value) = {
+  if value == none or value == auto { [] } else if type(value) == datetime {
+    value.display("[day]/[month]/[year]")
+  } else { value }
+}
+
 // -----------------------------------------------------------------------------
 
 #let _handout-frame() = context {
@@ -199,7 +209,10 @@
   let head = _letterhead.final()
   let font = _display-font.final()
   let weight = _display-weight.final()
-  let first = here().page() == 1
+  let page-number = here().page()
+  let entries = _handout-info.final().filter(entry => entry.page <= page-number)
+  let info = if entries.len() > 0 { entries.last().info } else { (:) }
+  let first = page-number == 1
 
   if first {
     place(
@@ -215,12 +228,22 @@
       dx: g.block1-left,
       dy: g.block-top,
       block(width: g.block-width, {
-        let name = head.at("department", default: none)
-        if name != none { _head-text(t, weight: "semibold", name) }
-        let who = head.at("signature", default: none)
-        if who != none { v(1.5mm, weak: false); _head-text(t, who) }
-        let site = head.at("site", default: none)
-        if site != none { v(1.5mm, weak: false); _head-text(t, weight: "semibold", site) }
+        let course = info.at("course", default: none)
+        let academic-year = info.at("academic-year", default: none)
+        if course != none and course != auto {
+          _head-text(t, weight: "semibold", _display(course))
+          if academic-year != none and academic-year != auto {
+            v(1.5mm, weak: false)
+            _head-text(t, _display(academic-year))
+          }
+        } else {
+          let name = head.at("department", default: none)
+          if name != none { _head-text(t, weight: "semibold", name) }
+          let who = head.at("signature", default: none)
+          if who != none { v(1.5mm, weak: false); _head-text(t, who) }
+          let site = head.at("site", default: none)
+          if site != none { v(1.5mm, weak: false); _head-text(t, weight: "semibold", site) }
+        }
       }),
     )
     place(
@@ -228,7 +251,12 @@
       dx: g.block2-left,
       dy: g.block-top,
       block(width: g.block-width, {
-        for l in head.at("address", default: ()) { _head-text(t, l) }
+        let degree = info.at("degree", default: none)
+        if degree != none and degree != auto {
+          _head-text(t, weight: "semibold", _display(degree))
+        } else {
+          for l in head.at("address", default: ()) { _head-text(t, l) }
+        }
       }),
     )
     let foot = head.at("institution-line", default: none)
@@ -254,6 +282,7 @@
       _txt(t.page-number, ink: uniud-blue, context [#counter(page).display() di #counter(page).final().first()]),
     )
   }
+
 }
 
 // -----------------------------------------------------------------------------
@@ -270,11 +299,30 @@
   info
 }
 
-#let _display(value) = {
-  if value == none or value == auto { [] } else if type(value) == datetime {
-    value.display("[day]/[month]/[year]")
-  } else { value }
-}
+#let _fit-page(body) = layout(size => {
+  let natural = measure(body)
+  if natural.width <= size.width and natural.height <= size.height {
+    body
+  } else {
+    let width-factor = if natural.width > size.width {
+      size.width / natural.width
+    } else { 1.0 }
+    let height-factor = if natural.height > size.height {
+      size.height / natural.height
+    } else { 1.0 }
+    let factor = calc.min(
+      width-factor,
+      height-factor,
+    )
+    scale(
+      x: factor * 100%,
+      y: factor * 100%,
+      origin: top + left,
+      reflow: true,
+      body,
+    )
+  }
+})
 
 #let uniud-theme(
   font: "Work Sans",
@@ -324,13 +372,13 @@
   show link: set text(fill: primary)
   show cite: set text(fill: primary)
   set figure(numbering: none)
+  show figure: it => _fit-page(it)
   show figure.caption: set text(size: 0.8em, fill: uniud-dark-gray)
 
   // `= Sezione` diventa titolo di capitolo, `== Slide` diventa il titolo del
   // paragrafo che quella slide occupava.
   show heading.where(level: 1): it => {
-    pagebreak(weak: true)
-    block(above: 0pt, below: 1.2em, {
+    block(above: 1.8em, below: 1.2em, {
       line(length: 100%, stroke: 2pt + primary)
       v(3mm, weak: false)
       _txt(t.chapter, ink: primary, weight: "bold", it.body)
@@ -353,9 +401,19 @@
   let notes = if sys.inputs.at("uniud-handout-notes", default: none) == "no" { false } else { notes }
   state("uniud-handout-notes").update(notes)
 
-  // Testata del documento, al mozzo di 1/3 di pagina come nella compilazione
-  // della carta intestata.
-  v(g.title-anchor - 0%)
+  // Ogni sorgente incluso invoca il tema una volta. Le sezioni scorrono nel
+  // documento; solo un nuovo deck comincia su una pagina nuova.
+  context {
+    if _deck-started.get() { pagebreak(weak: true) }
+    _deck-started.update(true)
+  }
+  context {
+    let start-page = here().page()
+    _handout-info.update(entries => entries + ((page: start-page, info: info),))
+  }
+
+  // La dispensa non e' una lettera: il titolo parte dall'inizio dell'area di
+  // testo, subito sotto la testata istituzionale.
   block(below: 2em, {
     _txt(t.title, ink: primary, weight: "bold", _display(info.at("title", default: none)))
     let sub = _display(info.at("subtitle", default: none))

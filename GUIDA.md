@@ -670,12 +670,24 @@ documento. Sotto il cofano è `typst compile --input uniud-handout=a4`, e la
 lezione non cambia di una riga: il tema, in coda a `uniud-theme.typ`, rilega i
 propri nomi pubblici alle versioni di `uniud-handout.typ`.
 
+I due blocchi con filetto sulla prima pagina possono mostrare corso e anno
+accademico nel primo, corso di studi nel secondo. Sono metadati distinti dal
+titolo della singola lezione:
+
+```typst
+config-info(
+  course: [Data Management],
+  academic-year: [Academic Year 2026/27],
+  degree: [Management & Business Analytics],
+)
+```
+
 Cosa diventa cosa:
 
 | sulle slide | nella dispensa |
 | --- | --- |
-| copertina | testata del documento, al mozzo di 1/3 di pagina |
-| `= Sezione` | titolo di capitolo, su pagina nuova, con filetto blu |
+| copertina | testata del documento, subito sotto l'intestazione istituzionale |
+| `= Sezione` | titolo di capitolo nel flusso, con filetto blu |
 | `== Titolo` | titolo di paragrafo |
 | `#pause`, liste a fuoco, codice passo passo | tutto in chiaro, niente passi |
 | `focus-slide` | richiamo su fondo blu |

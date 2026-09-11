@@ -271,6 +271,18 @@ Sheet geometry lives in `uniud-paper()` and the type scale in
 `uniud-paper-type()`, the document counterparts of `uniud-layout()` and
 `uniud-type()`.
 
+The two ruled blocks on the handout's first page can carry course and academic
+year in the first block, and the degree programme in the second, separately
+from the title of the individual deck:
+
+```typst
+config-info(
+  course: [Data Management],
+  academic-year: [Academic Year 2026/27],
+  degree: [Management & Business Analytics],
+)
+```
+
 ## Slides without progressive reveal
 
 `incremental: false` turns the steps off: one page per slide, everything shown.

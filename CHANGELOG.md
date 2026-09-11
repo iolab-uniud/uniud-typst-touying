@@ -7,6 +7,9 @@
 
 ## Non rilasciato
 
+- I due blocchi con filetto sulla prima pagina della dispensa A4 possono mostrare corso e anno accademico nel primo, corso di studi nel secondo, tramite i metadati `course`, `academic-year` e `degree` di `config-info`.
+- Nella dispensa A4 le sezioni continuano nel flusso senza salto pagina; il salto viene inserito soltanto tra deck distinti inclusi nello stesso documento.
+- Nella dispensa A4 le figure e i diagrammi sovradimensionati vengono ridotti proporzionalmente entro l'area utile della pagina; il titolo della prima pagina parte subito sotto la testata, senza il posizionamento a un terzo previsto per le lettere.
 - Il wordmark UNI/UD del «segue foglio» della dispensa usa lo stesso peso dell'acronimo di dipartimento: il manuale li vuole entrambi in Gotham Bold, reso in Work Sans SemiBold quando Gotham non c'è. Prima era in Black, e accanto all'acronimo risultava troppo pesante. Il peso è configurabile con `display-weight`, accanto a `display-font`.
 - `release.sh` apre nell'editor anche una voce di changelog già presente nel file, invece di lasciarla passare senza mostrarla.
 
