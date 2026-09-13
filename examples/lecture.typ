@@ -18,6 +18,10 @@
   // One page per slide instead of one per step, for the handout.
   handout: sys.inputs.at("handout", default: "false") == "true",
   font: "Work Sans",
+  // Diciture composte dal tema e sillabazione: il mazzo è in italiano.
+  lang: "it",
+  // Codice dell'evento Wooclap del corso: `#wooclap()` non deve ripeterlo.
+  wooclap-code: "QSYUDUH",
   // Carta intestata della dispensa A4: sulle slide non ha effetto.
   letterhead: (
     acronym: [DPIA],
@@ -58,6 +62,22 @@ Il paradigma si articola in tre passi.
 #pause
 - *Combina*: si ricompongono le soluzioni parziali.
 
+== Blocchi scoperti a turno
+
+Tre righe scoperte una alla volta con `uncover`: nella dispensa devono esserci
+tutte e tre.
+
+#grid(
+  columns: (auto, 1fr),
+  column-gutter: .7em,
+  row-gutter: .6em,
+  [*Divide*], [si spezza il problema in due metà],
+  uncover("2-")[*Impera*], uncover("2-")[ogni metà si ordina ricorsivamente],
+  uncover("3-")[*Combina*], uncover("3-")[la fusione ricompone il vettore],
+)
+
+#only("4-")[La fusione è il passo che costa: $Theta(n)$ per livello.]
+
 == Elenco a fuoco
 
 L'elenco resta tutto sulla slide: cambia dove va l'occhio.
@@ -84,6 +104,31 @@ al prezzo di #mark-at("3")[$Theta(n)$] di memoria ausiliaria.
 Quicksort in place #strike-at("4")[è stabile]: non lo è.
 
 #dim-at("4-")[Questo dettaglio esce di scena quando arriviamo al confronto.]
+
+== Attività dal vivo
+
+La domanda resta anche sulla carta; il modo di rispondere no. Sotto, il
+riquadro di partecipazione a Wooclap: nella dispensa A4 al suo posto resta un
+segnaposto.
+
+Quale dei tre ordina in $Theta(n log n)$ nel caso peggiore?
+
+#wooclap(arrange: "side", qr: 26mm, note: [Una sola risposta.])
+
+== Blocco più largo della colonna
+
+Una fila di riquadri a larghezza fissa, complessivamente più larga dell'area
+di testo: il tema la riduce da sé, sia qui sia nella dispensa A4.
+
+#box(
+  stroke: .8pt + uniud-gray,
+  inset: 4mm,
+  grid(
+    columns: 4,
+    column-gutter: 6mm,
+    ..([Divide], [Impera], [Combina], [Verifica]).map(x => box(width: 52mm, x)),
+  ),
+)
 
 == Testo su due colonne
 

@@ -12,7 +12,8 @@ corporate, scostamenti dal manuale, scelte di design.
 
 ## Requirements
 
-Typst 0.13.1+ and Touying 0.7.4, which Typst downloads on its own. Both fonts
+Typst 0.13.1+, Touying 0.7.4 and zebra 0.1.0 (the QR codes of `#wooclap`, drawn
+with Typst's own curves — no WASM plugin), which Typst downloads on its own. Both fonts
 the theme needs ship in `fonts/`, under the SIL Open Font License:
 
 - **Work Sans** — the corporate typeface (the manual's substitute for Gotham and

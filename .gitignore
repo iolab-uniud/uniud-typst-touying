@@ -5,6 +5,7 @@
 Claude outputs/
 
 dist/
+.preview/
 site/
 .venv/
 

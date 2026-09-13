@@ -41,6 +41,9 @@
 // the corporate proportions drift from one aspect ratio to the next.
 
 #import "@preview/touying:0.7.4": *
+// QR disegnati con le curve native di Typst: niente plugin WASM, niente
+// immagini da tenere aggiornate a mano.
+#import "@preview/zebra:0.1.0": qrcode
 // Warning veri del compilatore: la dipendenza arriva gia' con Touying.
 #import "@preview/uniwarn:0.1.1"
 
@@ -1249,6 +1252,15 @@
   },
 )
 
+/// Una riga sottovoce: piu' piccola e in grigio, per la precisazione che
+/// accompagna un'affermazione senza rubarle il posto.
+///
+/// ```typst
+/// Molte righe, confrontate.
+/// #small-note[Una domanda per decidere cosa fare dopo.]
+/// ```
+#let small-note(body) = text(size: 0.75em, fill: uniud-dark-gray, body)
+
 /// Two or more blocks side by side, separated by the corporate column gutter.
 ///
 /// For text that should *flow* from one column into the next, use Typst's own
@@ -1958,6 +1970,14 @@
   overflow-min: 70%,
   overflow-marker: true,
   overflow-warn: true,
+  // Lingua delle poche diciture composte dal tema (la numerazione della
+  // dispensa, il segnaposto delle attivita' interattive). `auto` segue
+  // `text.lang`, cioe' quello che il documento ha gia' impostato.
+  lang: auto,
+  strings: (:),
+  // Codice dell'evento Wooclap del corso: dichiarato qui, `#wooclap()` sulle
+  // slide non deve ripeterlo.
+  wooclap-code: none,
   ..args,
   body,
 ) = {
@@ -1990,6 +2010,9 @@
 
   set text(size: base-size, fill: uniud-black, weight: "regular")
   set text(font: font) if font != none
+  set text(lang: lang) if lang != auto
+  uniud-set-strings(lang: lang, strings: strings)
+  uniud-set-wooclap(wooclap-code)
   set par(leading: (60 / 54 - cap-height) * 1em)
 
   show raw: set text(font: code-font)
@@ -2001,6 +2024,17 @@
   set figure(gap: _caption-gap)
   show figure.caption: set text(size: _caption-size, fill: uniud-dark-gray)
   show heading.where(level: 3): set text(size: 1em, weight: "bold", fill: primary)
+
+  // Il controllo di overflow misura l'altezza: una slide troppo piena la vede,
+  // un diagramma o una tabella piu' larghi della colonna no, e finiscono fuori
+  // dai margini. I blocchi rigidi — fletcher e cetz restituiscono un `box` —
+  // si riducono qui, ciascuno sulla larghezza della regione che lo ospita.
+  let fit = uniud-fit-width.with(
+    limit: (100 - _col(layout, layout.content-column) - layout.h-margin) * 1%,
+  )
+  show box: it => fit(it)
+  show table: it => fit(it)
+  show raw.where(block: true): it => fit(it)
 
   show: touying-slides.with(
     config-page(
@@ -2060,6 +2094,20 @@
 }
 
 // -----------------------------------------------------------------------------
+// Attività interattive
+// -----------------------------------------------------------------------------
+//
+// In aula un voto Wooclap, una lavagna condivisa o un QR sono contenuto come un
+// altro: `interactive` non fa niente. Nella dispensa A4 lo stesso blocco
+// diventa un segnaposto, perché sulla carta non c'è niente da votare.
+
+/// Marca un blocco che esiste solo dal vivo.
+///
+/// - placeholder: cosa mettere al suo posto nella dispensa. `auto` usa la
+///   dicitura del tema nella lingua del documento, `none` non lascia niente.
+#let interactive(placeholder: auto, ..args, body) = body
+
+// -----------------------------------------------------------------------------
 // Modalità dispensa
 // -----------------------------------------------------------------------------
 //
@@ -2104,6 +2152,103 @@
 
 // Questi vengono da Touying, non da qui: in modalità dispensa li copriamo,
 // perché `import *` di questo file arriva dopo quello di Touying.
+#let interactive = if _handout-a4 { uniud-handout.interactive } else { interactive }
 #let speaker-note = if _handout-a4 { uniud-handout.speaker-note } else { speaker-note }
 #let pause = if _handout-a4 { uniud-handout.pause } else { pause }
 #let meanwhile = if _handout-a4 { uniud-handout.meanwhile } else { meanwhile }
+// Senza questi la rivelazione progressiva non sparisce: sparisce il contenuto
+// che rivela, perché fuori dal contesto della diapositiva `uncover` e soci
+// restituiscono il vuoto.
+#let uncover = if _handout-a4 { uniud-handout.uncover } else { uncover }
+#let only = if _handout-a4 { uniud-handout.only } else { only }
+#let handout-only = if _handout-a4 { uniud-handout.handout-only } else { handout-only }
+#let touying-recall = if _handout-a4 { uniud-handout.touying-recall } else { touying-recall }
+#let alternatives = if _handout-a4 { uniud-handout.alternatives } else { alternatives }
+#let alternatives-match = if _handout-a4 { uniud-handout.alternatives-match } else { alternatives-match }
+#let alternatives-fn = if _handout-a4 { uniud-handout.alternatives-fn } else { alternatives-fn }
+#let alternatives-cases = if _handout-a4 { uniud-handout.alternatives-cases } else { alternatives-cases }
+#let item-by-item = if _handout-a4 { uniud-handout.item-by-item } else { item-by-item }
+#let item-by-item-fn = if _handout-a4 { uniud-handout.item-by-item-fn } else { item-by-item-fn }
+#let effect = if _handout-a4 { uniud-handout.effect } else { effect }
+#let touying-reduce = if _handout-a4 { uniud-handout.touying-reduce } else { touying-reduce }
+#let touying-reducer = if _handout-a4 { uniud-handout.touying-reducer } else { touying-reducer }
+
+// -----------------------------------------------------------------------------
+// Wooclap
+// -----------------------------------------------------------------------------
+//
+// Sta in coda al file apposta: così chiude sui nomi *finali* di `interactive`,
+// `callout` e `side-by-side` — cioè sulle versioni dispensa quando si compila
+// la dispensa, senza doverlo rilegare a parte.
+
+/// Il riquadro di partecipazione a un evento Wooclap: indirizzo, codice e QR
+/// generato dal codice, nello stile corporate. È già marcato `interactive`,
+/// quindi nella dispensa A4 al suo posto resta un segnaposto.
+///
+/// ```typst
+/// #show: uniud-theme.with(wooclap-code: "QSYUDUH", ..)   // una volta sola
+/// #wooclap()                                             // su ogni domanda
+/// #wooclap(note: [Scegline quante vuoi.], qr: 24mm)
+/// #wooclap(arrange: "side", title: [Entra nella lavagna])
+/// ```
+///
+/// - code: il codice dell'evento; `auto` prende quello del tema.
+/// - qr: lato del QR, `none` per non metterlo.
+/// - arrange: "below" (QR sotto il riquadro), "side" (affiancati), "qr" (solo
+///   il QR, per le slide che hanno gia' detto tutto).
+/// - note: una riga di istruzioni dentro il riquadro.
+/// - placeholder: cosa lasciare nella dispensa; `auto` usa la dicitura del
+///   tema, `none` non lascia niente.
+#let wooclap(
+  code: auto,
+  title: auto,
+  note: none,
+  qr: 30mm,
+  arrange: "below",
+  accent: uniud-black,
+  qr-fill: uniud-black,
+  placeholder: auto,
+) = context {
+  let code = if code == auto { _wooclap-code.final() } else { code }
+  assert(
+    code != none,
+    message: "uniud-touying: manca il codice dell'evento Wooclap. Passalo al tema"
+      + " con `wooclap-code: \"XXXXXXX\"`, oppure alla singola chiamata con"
+      + " `#wooclap(code: \"XXXXXXX\")`.",
+  )
+  let url = wooclap-url(code)
+  let box = callout(title: if title == auto { uniud-str("wooclap-title") } else { title }, accent: accent)[
+    #text(weight: "bold")[app.wooclap.com/#code] \
+    #uniud-str("wooclap-or-code") #text(weight: "bold")[#code]
+    #if note != none [
+      #v(.2em)
+      #text(size: .8em)[#note]
+    ]
+  ]
+  let mark = if qr == none { none } else {
+    align(center, qrcode(url, width: qr, quiet-zone: true, fill: qr-fill))
+  }
+  interactive(
+    placeholder: if placeholder == auto { uniud-str("wooclap-interactive") } else { placeholder },
+    if arrange == "qr" or box == none {
+      mark
+    } else if mark == none {
+      box
+    } else if arrange == "side" {
+      // Non `side-by-side`: quello divide in parti uguali e il QR, che e'
+      // piccolo e fisso, lascerebbe l'indirizzo ad andare a capo. Qui prende
+      // la larghezza che ha, il riquadro tutto il resto.
+      grid(
+        columns: (1fr, auto),
+        column-gutter: .6em,
+        align: (left + horizon, center + horizon),
+        box,
+        mark,
+      )
+    } else {
+      box
+      v(.4em)
+      mark
+    },
+  )
+}

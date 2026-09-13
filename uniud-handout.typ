@@ -223,49 +223,60 @@
     )
     _head-rule(g, g.block1-left, g.block1-left + g.block-width)
     _head-rule(g, g.block2-left, g.block2-left + g.block-width)
+    // I due blocchi accanto ai filetti portano i dati del contenuto — corso,
+    // anno accademico, docente, corso di studi — perche' su una dispensa e'
+    // quello che identifica il documento. Il recapito del dipartimento scende
+    // nel pie' di pagina, dove non compete con l'informazione didattica.
+    let pick(..keys) = {
+      let found = none
+      for k in keys.pos() {
+        if found == none {
+          let v = info.at(k, default: none)
+          if v != none and v != auto { found = v }
+        }
+      }
+      found
+    }
+    let stack-lines(lines) = {
+      let lines = lines.filter(l => l.at(0) != none)
+      for (i, l) in lines.enumerate() {
+        if i > 0 { v(1.5mm, weak: false) }
+        _head-text(t, weight: l.at(1), _display(l.at(0)))
+      }
+    }
+    let course = pick("course", "institution")
     place(
       top + left,
       dx: g.block1-left,
       dy: g.block-top,
-      block(width: g.block-width, {
-        let course = info.at("course", default: none)
-        let academic-year = info.at("academic-year", default: none)
-        if course != none and course != auto {
-          _head-text(t, weight: "semibold", _display(course))
-          if academic-year != none and academic-year != auto {
-            v(1.5mm, weak: false)
-            _head-text(t, _display(academic-year))
-          }
-        } else {
-          let name = head.at("department", default: none)
-          if name != none { _head-text(t, weight: "semibold", name) }
-          let who = head.at("signature", default: none)
-          if who != none { v(1.5mm, weak: false); _head-text(t, who) }
-          let site = head.at("site", default: none)
-          if site != none { v(1.5mm, weak: false); _head-text(t, weight: "semibold", site) }
-        }
-      }),
+      block(width: g.block-width, stack-lines((
+        (course, "semibold"),
+        (pick("degree"), "regular"),
+        // La struttura compare solo se il corso non ha gia' occupato il blocco:
+        // nelle lezioni `institution` e' quasi sempre il dipartimento stesso.
+        (if course == none { head.at("department", default: none) }, "regular"),
+      ))),
     )
     place(
       top + left,
       dx: g.block2-left,
       dy: g.block-top,
-      block(width: g.block-width, {
-        let degree = info.at("degree", default: none)
-        if degree != none and degree != auto {
-          _head-text(t, weight: "semibold", _display(degree))
-        } else {
-          for l in head.at("address", default: ()) { _head-text(t, l) }
-        }
-      }),
+      block(width: g.block-width, stack-lines((
+        (pick("academic-year", "date"), "semibold"),
+        (pick("author"), "regular"),
+        (head.at("site", default: none), "regular"),
+      ))),
     )
-    let foot = head.at("institution-line", default: none)
-    if foot != none {
+    let foot = (
+      (head.at("institution-line", default: none),)
+        + head.at("address", default: ())
+    ).filter(x => x != none)
+    if foot.len() > 0 {
       place(
         bottom + left,
         dx: g.mark-left,
         dy: -g.footer-bottom,
-        _txt(t.fine, ink: uniud-dark-gray, foot),
+        _txt(t.fine, ink: uniud-dark-gray, foot.join([ · ])),
       )
     }
   } else {
@@ -279,7 +290,11 @@
       bottom + left,
       dx: g.page-number-left,
       dy: -g.footer-bottom,
-      _txt(t.page-number, ink: uniud-blue, context [#counter(page).display() di #counter(page).final().first()]),
+      _txt(
+        t.page-number,
+        ink: uniud-blue,
+        context [#counter(page).display() #uniud-str("page-of") #counter(page).final().first()],
+      ),
     )
   }
 
@@ -341,6 +356,16 @@
   display-weight: uniud-display-weight,
   // Le note del relatore finiscono nella dispensa, evidenziate.
   notes: true,
+  // Le attivita' interattive — un voto in aula, una lavagna condivisa — sulla
+  // carta non hanno senso: al loro posto resta un segnaposto. `true` le
+  // rimette dentro cosi' come stanno sulle slide.
+  interactive: false,
+  // Lingua delle diciture composte dal tema; `auto` segue `text.lang`.
+  lang: auto,
+  strings: (:),
+  // Codice dell'evento Wooclap del corso, come sulle slide: serve anche qui,
+  // perche' `--interactive` rimette in pagina il riquadro di partecipazione.
+  wooclap-code: none,
   ..args,
   body,
 ) = {
@@ -373,6 +398,13 @@
   show cite: set text(fill: primary)
   set figure(numbering: none)
   show figure: it => _fit-page(it)
+  // I blocchi rigidi — diagrammi (fletcher e cetz restituiscono un `box`),
+  // tabelle, codice — non vanno a capo: senza questo escono dai margini,
+  // perche' il controllo di overflow guarda solo l'altezza.
+  let fit = uniud-fit-width.with(limit: 210mm - 2 * g.margin-x)
+  show box: it => fit(it)
+  show table: it => fit(it)
+  show raw.where(block: true): it => fit(it)
   show figure.caption: set text(size: 0.8em, fill: uniud-dark-gray)
 
   // `= Sezione` diventa titolo di capitolo, `== Slide` diventa il titolo del
@@ -391,6 +423,10 @@
   )
   show heading.where(level: 3): set text(size: 1em, weight: "bold", fill: primary)
 
+  set text(lang: lang) if lang != auto
+  uniud-set-strings(lang: lang, strings: strings)
+  uniud-set-wooclap(wooclap-code)
+
   _paper.update(g)
   _paper-type.update(t)
   _letterhead.update(letterhead)
@@ -400,6 +436,12 @@
   // l'ultima parola sul parametro del tema.
   let notes = if sys.inputs.at("uniud-handout-notes", default: none) == "no" { false } else { notes }
   state("uniud-handout-notes").update(notes)
+  // `--input uniud-handout-interactive=yes` (cioe' `--interactive` dello
+  // script) ha l'ultima parola sul parametro del tema.
+  let interactive = if sys.inputs.at("uniud-handout-interactive", default: none) == "yes" {
+    true
+  } else { interactive }
+  state("uniud-handout-interactive").update(interactive)
 
   // Ogni sorgente incluso invoca il tema una volta. Le sezioni scorrono nel
   // documento; solo un nuovo deck comincia su una pagina nuova.
@@ -413,7 +455,8 @@
   }
 
   // La dispensa non e' una lettera: il titolo parte dall'inizio dell'area di
-  // testo, subito sotto la testata istituzionale.
+  // testo, subito sotto la testata istituzionale. Corso, anno accademico e
+  // docente stanno nei blocchi della testata, quindi qui non si ripetono.
   block(below: 2em, {
     _txt(t.title, ink: primary, weight: "bold", _display(info.at("title", default: none)))
     let sub = _display(info.at("subtitle", default: none))
@@ -421,19 +464,6 @@
       v(2mm, weak: false)
       _txt(t.subtitle, ink: uniud-black, weight: "medium", sub)
     }
-    v(4mm, weak: false)
-    _txt(
-      (size: t.meta.size, line: t.meta.size * 1.45),
-      ink: uniud-dark-gray,
-      {
-        let bits = (
-          _display(info.at("author", default: none)),
-          _display(info.at("institution", default: none)),
-          _display(info.at("date", default: none)),
-        ).filter(x => x != [])
-        bits.join(linebreak())
-      },
-    )
   })
 
   body
@@ -567,8 +597,86 @@
 
 #let pause = none
 #let meanwhile = none
+
+// `uncover` e `only` di Touying, fuori dal contesto di una diapositiva,
+// restituiscono il vuoto: e' cosi' che il contenuto rivelato per gradi
+// spariva dalla dispensa. Qui valgono l'identita'.
 #let uncover(..args) = args.pos().last()
 #let only(..args) = args.pos().last()
+#let handout-only(..args) = args.pos().last()
+#let touying-recall(..args) = none
+
+// Alternative: sul foglio si stampa l'ultimo stato, che e' quello completo.
+#let alternatives(..args) = {
+  let p = args.pos()
+  if p.len() == 0 { none } else { p.last() }
+}
+#let alternatives-match(cases, ..args) = {
+  let values = if type(cases) == dictionary { cases.values() } else { cases }
+  if values.len() == 0 { none } else { values.last() }
+}
+#let alternatives-fn(..args, fn) = {
+  let p = args.pos()
+  let start = args.named().at("start", default: 1)
+  let count = args.named().at("count", default: none)
+  let end = args.named().at("end", default: none)
+  let last = if count != none { start + count - 1 } else if end != none { end } else if p.len() > 0 { p.last() } else { start }
+  fn(last)
+}
+#let alternatives-cases(cases, fn, ..args) = fn(cases.last())
+
+// Rivelazione elemento per elemento: nella dispensa ci sono tutti.
+#let item-by-item(..args) = {
+  let p = args.pos()
+  if p.len() == 0 { none } else { p.last() }
+}
+#let item-by-item-fn(..args, fn) = {
+  let p = args.pos()
+  if p.len() == 0 { none } else { p.last() }
+}
+
+// `effect(fn, "2-", corpo)`: l'effetto tipografico si applica, il tempo no.
+#let effect(fn, ..args) = {
+  let body = args.pos().last()
+  if type(fn) == function { fn(body) } else { body }
+}
+
+// Riduttori (`touying-reduce.with(fletcher)`, `touying-reducer`): fuori dalla
+// diapositiva il marcatore che producono non viene mai risolto, e il disegno
+// sparisce. Qui si chiama direttamente la funzione di disegno del pacchetto.
+#let _reduce-fn(package) = {
+  let d = dictionary(package)
+  if "touying-reducer-bindings" in d {
+    let b = d.touying-reducer-bindings
+    let path = if type(b) == dictionary { b.at("reduce", default: ()) } else { () }
+    let fn = package
+    for step in path {
+      if type(step) == str { fn = dictionary(fn).at(step, default: none) }
+    }
+    if type(fn) == function { return fn }
+  }
+  for name in ("diagram", "canvas") {
+    if name in d { return d.at(name) }
+  }
+  none
+}
+
+// Dentro i riduttori i passi si scrivono come `(pause,)`: in dispensa `pause`
+// vale `none`, quindi restano array vuoti da togliere.
+#let _drop-marks(items) = items
+  .map(x => if type(x) == array { x.filter(y => y != none) } else { x })
+  .filter(x => x != none and x != ())
+
+#let touying-reduce(package, bindings: none, ..args) = {
+  let fn = _reduce-fn(package)
+  if fn == none { none } else { fn(.._drop-marks(args.pos()), ..args.named()) }
+}
+
+#let touying-reducer(reduce: arr => arr.sum(), cover: none, ..args) = reduce(
+  _drop-marks(args.pos()),
+  ..args.named(),
+)
+
 #let alert-at(..args) = text(fill: uniud-blue, weight: "semibold", args.pos().last())
 #let mark-at(..args) = highlight(fill: uniud-blue.lighten(85%), args.pos().last())
 #let strike-at(..args) = strike(args.pos().last())
@@ -578,6 +686,35 @@
 
 #let wide-mode(..args) = body => body
 #let overflow-mode(..args) = body => body
+
+// -----------------------------------------------------------------------------
+// Attivita' interattive
+// -----------------------------------------------------------------------------
+//
+// Il riquadro di partecipazione, il QR, il codice dell'evento: cose che
+// esistono solo finche' l'aula e' accesa. Sulla carta restano un segnaposto,
+// che serve a spiegare il salto — la domanda e il debrief intorno rimangono.
+
+#let interactive(placeholder: auto, ..args, body) = context {
+  if state("uniud-handout-interactive", false).final() {
+    body
+  } else {
+    let label = if placeholder == auto { uniud-str("interactive") } else { placeholder }
+    if label == none {
+      none
+    } else {
+      block(
+        width: 100%,
+        above: 0.8em,
+        below: 0.8em,
+        inset: (x: 4mm, y: 2.5mm),
+        radius: 1mm,
+        stroke: (paint: uniud-gray, thickness: .6pt, dash: "dashed"),
+        align(center, _txt((size: 8pt, line: 10pt), ink: uniud-dark-gray, label)),
+      )
+    }
+  }
+}
 
 // -----------------------------------------------------------------------------
 // Note del relatore

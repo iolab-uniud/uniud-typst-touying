@@ -620,6 +620,9 @@ typst query --root . --field value lezione.typ "<pdfpc-file>" --one > lezione.pd
   overflow-min: 70%,           // riduzione massima consentita
   overflow-marker: true,       // badge rosso sulle slide che sforano
   overflow-warn: true,         // warning del compilatore
+  lang: auto,                  // auto = la lingua del documento (`text.lang`)
+  strings: (:),                // diciture del tema da sovrascrivere
+  wooclap-code: none,          // codice dell'evento Wooclap del corso
   layout: auto,                // vedi sotto
   type-scale: auto,            // vedi sotto
   config-info(...),
@@ -629,6 +632,34 @@ typst query --root . --field value lezione.typ "<pdfpc-file>" --one > lezione.pd
 Se cambi `font`, aggiorna anche `cap-height`: da lì il tema ricava le
 interlinee e l'allineamento della prima riga sull'ancoraggio (0.66 è il valore
 di Work Sans).
+
+### La lingua
+
+Il tema compone da sé pochissime diciture — la numerazione della dispensa
+(«3 di 9»), il segnaposto delle attività interattive — e le prende dalla lingua
+del documento. Con `lang: auto` (il default) segue `text.lang`, cioè l'inglese
+finché non lo cambi: un mazzo in italiano dichiara la sua lingua una volta sola,
+
+```typst
+#show: uniud-theme.with(lang: "it", ..)
+```
+
+e da lì seguono anche sillabazione, virgolette e i titoli che genera Typst
+(«Bibliografia», l'indice). Italiano e inglese ci sono già; per un'altra lingua,
+o per cambiare una dicitura, `strings`:
+
+```typst
+#show: uniud-theme.with(
+  lang: "de",
+  strings: (
+    de: (page-of: "von", interactive: [Interaktiv — im Hörsaal]),
+    all: (page-of: "/"),   // `all` vale per qualunque lingua
+  ),
+)
+```
+
+Le lingue che il tema non conosce ripiegano sull'inglese. `uniud-str("chiave")`
+restituisce una dicitura, se ti serve nel tuo materiale.
 
 ### La dispensa A4
 
@@ -646,8 +677,9 @@ Lo script è solo una scorciatoia per la stessa riga, con l'uscita e i font già
 al posto giusto:
 
 ```
-./scripts/make-handout.sh lezione.typ            # → lezione-handout.pdf
-./scripts/make-handout.sh lezione.typ --no-notes # senza le note del relatore
+./scripts/make-handout.sh lezione.typ               # → lezione-handout.pdf
+./scripts/make-handout.sh lezione.typ --no-notes    # senza le note del relatore
+./scripts/make-handout.sh lezione.typ --interactive # con le attività dal vivo
 ```
 
 In VS Code c'è l'attività **Dispensa A4**, e un progetto creato con
@@ -670,17 +702,72 @@ documento. Sotto il cofano è `typst compile --input uniud-handout=a4`, e la
 lezione non cambia di una riga: il tema, in coda a `uniud-theme.typ`, rilega i
 propri nomi pubblici alle versioni di `uniud-handout.typ`.
 
-I due blocchi con filetto sulla prima pagina possono mostrare corso e anno
-accademico nel primo, corso di studi nel secondo. Sono metadati distinti dal
-titolo della singola lezione:
+I due blocchi con filetto sulla prima pagina portano i dati del **contenuto**,
+non il recapito della struttura: a sinistra corso e corso di studi, a destra
+anno accademico e docente. Sono metadati distinti dal titolo della singola
+lezione:
 
 ```typst
 config-info(
   course: [Data Management],
-  academic-year: [Academic Year 2026/27],
   degree: [Management & Business Analytics],
+  academic-year: [Academic Year 2026/27],
+  author: [Luca Di Gaspero],
 )
 ```
+
+Se `course` e `academic-year` mancano, i blocchi ripiegano su `institution` e
+`date`, che ogni lezione ha già: la testata resta compilata anche senza
+metadati nuovi. Il nome della struttura compare nel primo blocco solo quando il
+corso non c'è, e l'indirizzo di `letterhead` scende nel piè di pagina accanto
+alla dicitura istituzionale, dove non compete con l'informazione didattica. Il
+titolo, appena sotto, non ripete più autore, struttura e data: stanno in
+testata.
+
+#### Wooclap
+
+Il riquadro di partecipazione a un evento Wooclap — indirizzo, codice e QR — è
+un elemento del tema. Il codice dell'evento si dichiara una volta, nel tema:
+
+```typst
+#show: uniud-theme.with(wooclap-code: "QSYUDUH", ..)
+
+#wooclap()                                   // sotto la domanda
+#wooclap(note: [Scegline quante vuoi.])      // con una riga di istruzioni
+#wooclap(arrange: "side", qr: 24mm)          // riquadro e QR affiancati
+#wooclap(arrange: "qr", qr-fill: uniud-blue) // solo il QR, in blu
+#wooclap(code: "ALTRO42", title: [Entra nella lavagna])
+```
+
+Il **QR si genera dal codice**: non c'è nessuna immagine da rifare quando cambi
+evento. Lo disegna [zebra](https://typst.app/universe/package/zebra/) con le
+curve native di Typst, quindi è vettoriale e si colora come qualunque altro
+elemento. `qr: none` lo toglie, `arrange` decide dove sta.
+
+Il riquadro è già marcato `interactive` (qui sotto): nella dispensa A4 al suo
+posto resta un segnaposto, e la domanda intorno rimane. Le diciture — «Vota su
+Wooclap», «o codice», il segnaposto — seguono la lingua del documento.
+
+#### Quello che esiste solo in aula
+
+Un voto dal vivo, una lavagna condivisa, un QR da inquadrare: sulla carta non
+c'è niente da votare e il riquadro di partecipazione diventa rumore. Il blocco
+si marca con `interactive`, che sulle slide non fa nulla e nella dispensa
+lascia un segnaposto tratteggiato al suo posto:
+
+```typst
+#interactive[
+  #callout(title: [Vota ora])[ app.wooclap.com/XXXXXX ]
+]
+
+#interactive(placeholder: [Domanda dal vivo])[ ... ]  // dicitura su misura
+#interactive(placeholder: none)[ ... ]                // niente, nemmeno il segno
+```
+
+Si marca **solo la parte interattiva**, non la slide intera: la domanda, le
+opzioni e il debrief servono anche a chi rilegge la dispensa. Per riavere tutto
+com'è sulle slide: `interactive: true` nel tema, oppure
+`./scripts/make-handout.sh lezione.typ --interactive`.
 
 Cosa diventa cosa:
 
@@ -695,6 +782,7 @@ Cosa diventa cosa:
 | `outline-slide` | indice del documento |
 | immagini e didascalie | figure con didascalia |
 | `#speaker-note` | blocco evidenziato in azzurro |
+| `#interactive` | segnaposto tratteggiato (`interactive: true` lo rimette) |
 
 I dati della carta intestata si passano al tema con `letterhead`, che sulle
 slide non ha effetto:
@@ -865,6 +953,29 @@ Per la consegna conviene spegnere il badge (`overflow-marker: false`) e tenere
 acceso il warning: le slide troppo piene restano segnalate in compilazione, ma
 il PDF resta pulito.
 
+#### Quello che è troppo largo
+
+La misura qui sopra riguarda l'altezza: è il modo in cui una slide si riempie.
+Un **blocco rigido** — un diagramma fletcher o cetz, una tabella a colonne
+fisse, un blocco di codice con righe lunghe — non va a capo e non fa crescere
+l'altezza: esce dai margini di lato, e il controllo di overflow non lo vede.
+
+Il tema lo riduce da sé, sia sulle slide sia nella dispensa, ciascun blocco
+sulla larghezza della regione che lo ospita (una colonna di `side-by-side` vale
+per quello che è). Il contenuto che *può* andare a capo — paragrafi, elenchi,
+tabelle con celle di testo — non viene toccato: si riconosce dal fatto che,
+stretto, si allunga.
+
+Resta silenzioso, senza badge né warning: al contrario di una slide troppo
+piena, un diagramma ridotto del 15 % non è un difetto da correggere a mano.
+
+Per il contenuto che il tema non intercetta — qualcosa composto con `place`,
+per esempio — la funzione è pubblica:
+
+```typst
+#uniud-fit-width(qualcosa-di-molto-largo)
+```
+
 ### Didascalie delle immagini
 
 Le didascalie stanno **sotto** l'immagine, nello stesso stile delle didascalie
@@ -1028,6 +1139,11 @@ I ruoli sono `title`, `subtitle`, `number`, `body-large`, `body`, `meta`,
 | `uniud-type` | scala tipografica |
 | `wide-mode` | cambia la larghezza da un punto in poi, con `#show:` |
 | `overflow-mode` | cambia la politica di overflow da un punto in poi, con `#show:` |
+| `small-note` | riga sottovoce, piccola e grigia |
+| `wooclap` | riquadro di partecipazione a Wooclap, con il QR generato dal codice |
+| `interactive` | marca un blocco che esiste solo dal vivo |
+| `uniud-fit-width` | riduce un blocco rigido più largo della colonna |
+| `uniud-str` | una dicitura del tema nella lingua del documento |
 
 ---
 
