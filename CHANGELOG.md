@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.4 - 2026-09-13
+
+- Rivisti e corretti gli handout, ora coerenti anche con le slide interattive (gli elementi interattivi non compaiono più negli handout).
+
 ## 0.3.3 - 2026-09-11
 
 - Migliorato lo stile dello handout, con layout e formattazione più curati e coerenti con il tema
