@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.5 - 2026-09-21
+
+- Corretto `#alert[..]` affinché funzioni anche fuori dalle slide (es. nelle celle di tabella) e negli handout, dove il testo prima spariva
+- Risolto un problema nello script di rilascio che poteva generare pacchetti non corretti
+
 ## 0.3.4 - 2026-09-13
 
 - Rivisti e corretti gli handout, ora coerenti anche con le slide interattive (gli elementi interattivi non compaiono più negli handout).
