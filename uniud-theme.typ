@@ -2143,6 +2143,7 @@
 #let media-box = if _handout-a4 { uniud-handout.media-box } else { media-box }
 #let focus-list = if _handout-a4 { uniud-handout.focus-list } else { focus-list }
 #let dimmed = if _handout-a4 { uniud-handout.dimmed } else { dimmed }
+#let alert = if _handout-a4 { uniud-handout.alert } else { alert }
 #let alert-at = if _handout-a4 { uniud-handout.alert-at } else { alert-at }
 #let mark-at = if _handout-a4 { uniud-handout.mark-at } else { mark-at }
 #let strike-at = if _handout-a4 { uniud-handout.strike-at } else { strike-at }

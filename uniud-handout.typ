@@ -677,6 +677,10 @@
   ..args.named(),
 )
 
+// `#alert[..]` di Touying restituisce un marcatore che solo `touying-slides`
+// sa risolvere: fuori dalla diapositiva, per esempio in una cella di tabella,
+// il testo spariva. Qui e' semplicemente testo blu corporate.
+#let alert(..args) = text(fill: uniud-blue, args.pos().last())
 #let alert-at(..args) = text(fill: uniud-blue, weight: "semibold", args.pos().last())
 #let mark-at(..args) = highlight(fill: uniud-blue.lighten(85%), args.pos().last())
 #let strike-at(..args) = strike(args.pos().last())

@@ -15,6 +15,7 @@
 
 ## Non rilasciato
 
+- Nella dispensa A4 `#alert[..]` non fa più sparire il testo: dentro una cella di tabella (o comunque fuori dal corpo di una slide) il marcatore di Touying non veniva risolto e il contenuto andava perso. Ora `alert` viene rilegato alla versione documento, che lo stampa in blu corporate.
 - `#small-note[..]` per la riga sottovoce — piu' piccola e in grigio — che accompagna un'affermazione senza rubarle il posto.
 - `#wooclap()` compone il riquadro di partecipazione a un evento Wooclap — indirizzo, codice e QR — nello stile corporate, già marcato `interactive`. Il **QR si genera dal codice** con zebra (curve native di Typst, nessun plugin WASM): niente immagini da rifare a ogni cambio di evento. Il codice si dichiara una volta con `wooclap-code:` nel tema; `arrange` ("below", "side", "qr"), `qr`, `qr-fill`, `note`, `title` e `code` governano il resto. Aggiunge zebra 0.1.0 alle dipendenze del pacchetto.
 - `interactive` marca i blocchi che esistono solo dal vivo — un voto in aula, una lavagna condivisa, un QR da inquadrare. Sulle slide non fa niente; nella dispensa A4 lascia al loro posto un segnaposto tratteggiato, perché la domanda e il debrief intorno restino leggibili. Si riaccendono con `interactive: true` nel tema o `make-handout.sh --interactive`.
