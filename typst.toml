@@ -1,6 +1,6 @@
 [package]
 name = "uniud-touying"
-version = "0.3.4"
+version = "0.3.5"
 entrypoint = "uniud-theme.typ"
 authors = ["Luca Di Gaspero"]
 license = "CC-BY-4.0 AND MIT-0"

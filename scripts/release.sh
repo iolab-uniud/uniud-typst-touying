@@ -155,10 +155,11 @@ if [[ "$NEW_VERSION" != "$OLD_VERSION" ]]; then
         ' "$f"
     done
 
-    # Nessun residuo della versione precedente fuori dal changelog: se ne resta
-    # uno è un punto da aggiungere alla sostituzione qui sopra.
-    STALE="$(git grep -n -F "$OLD_VERSION" -- . \
-             ':(exclude)CHANGELOG.md' ':(exclude)dist' || true)"
+    # Nessun residuo della versione precedente nei file testuali, fuori dal
+    # changelog e dalla documentazione dei font, che hanno versioni proprie.
+    STALE="$(git grep -I -n -F "$OLD_VERSION" -- . \
+             ':(exclude)CHANGELOG.md' ':(exclude)dist' \
+             ':(exclude)fonts/README.md' || true)"
     if [[ -n "$STALE" ]]; then
         echo "$STALE" >&2
         die "versione precedente ancora citata nei file qui sopra"
