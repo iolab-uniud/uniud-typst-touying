@@ -451,7 +451,15 @@
 //   min     riduzione massima consentita: sotto questa soglia il testo
 //           diventa illeggibile e conviene tagliare il contenuto
 //   marker  badge di avviso sulle slide che sforano
-#let _overflow-defaults = (mode: "shrink", min: 70%, marker: true, warn: true)
+//   marker-threshold  overflow minimo (percentuale) sotto il quale il marker
+//           non viene mostrato anche se `marker` e' true; 0% lo mostra sempre
+#let _overflow-defaults = (
+  mode: "shrink",
+  min: 70%,
+  marker: true,
+  warn: true,
+  marker-threshold: 0%,
+)
 
 // Sopra questo fattore la riduzione e' rumore: il contenuto stava gia'
 // riempiendo la regione esatta, non sforandola.
@@ -462,6 +470,20 @@
   namespace: "uniud-touying",
   prefix: "[uniud-touying] ",
 )
+
+// Bisezione tra `lo` (il fattore sta) e `hi` (non sta) sull'invariante di
+// `too-tall`. Otto passi bastano a scendere sotto il mezzo per cento di
+// errore residuo. Condivisa fra la riduzione vera e propria e la sola stima
+// dell'entita' dell'overflow, usata per confrontarla con `marker-threshold`.
+#let _overflow-bisect(too-tall, lo) = {
+  let hi = 1.0
+  let lo = lo
+  for _ in range(8) {
+    let mid = (lo + hi) / 2
+    if too-tall(mid) { hi = mid } else { lo = mid }
+  }
+  lo
+}
 
 #let _overflow-config(self, overflow) = {
   let cfg = (
@@ -547,7 +569,17 @@
         if cfg.warn {
           _overflow-warn("contenuto in overflow a pagina " + str(here().page()))
         }
-        if cfg.marker { _overflow-badge(none) }
+        if cfg.marker {
+          // "mark" non riduce, quindi non ha gia' un fattore: lo si stima
+          // solo se serve davvero, cioe' quando c'e' una soglia da rispettare.
+          let threshold = cfg.at("marker-threshold", default: 0%) / 100%
+          let shown = if threshold <= 0 {
+            true
+          } else {
+            (1.0 - _overflow-bisect(too-tall, 0.0)) >= threshold
+          }
+          if shown { _overflow-badge(none) }
+        }
       } else {
         let lo = cfg.min / 100%
         if too-tall(lo) {
@@ -565,17 +597,18 @@
                 + "%, alleggerisci la slide",
             )
           }
-          if cfg.marker { _overflow-badge(none) }
-        } else {
-          // Invariante: `lo` sta, `hi` no. Otto bisezioni bastano a scendere
-          // sotto il mezzo per cento di errore residuo.
-          let hi = 1.0
-          let lo = lo
-          for _ in range(8) {
-            let mid = (lo + hi) / 2
-            if too-tall(mid) { hi = mid } else { lo = mid }
+          if cfg.marker {
+            let threshold = cfg.at("marker-threshold", default: 0%) / 100%
+            let shown = if threshold <= 0 {
+              true
+            } else {
+              (1.0 - _overflow-bisect(too-tall, 0.0)) >= threshold
+            }
+            if shown { _overflow-badge(none) }
           }
-          let factor = lo
+        } else {
+          // Invariante: `lo` sta, `hi` no.
+          let factor = _overflow-bisect(too-tall, lo)
           if factor >= _overflow-deadband {
             // Saturava la regione ma bastava una briciola: e' il caso del
             // contenuto che la riempie esatta (tipicamente `columns`).
@@ -599,7 +632,10 @@
                 + "%",
             )
           }
-          if cfg.marker { _overflow-badge(factor) }
+          if cfg.marker {
+            let threshold = cfg.at("marker-threshold", default: 0%) / 100%
+            if (1.0 - factor) >= threshold { _overflow-badge(factor) }
+          }
         }
       }
     })
@@ -613,14 +649,23 @@
 /// ```typst
 /// #show: overflow-mode("ignore")     // lascia traboccare
 /// #show: overflow-mode(marker: false) // riduci in silenzio
+/// #show: overflow-mode(marker-threshold: 10%) // marker solo oltre il 10%
 /// #show: overflow-mode(auto)          // torna alle impostazioni del tema
 /// ```
-#let overflow-mode(mode: auto, min: auto, marker: auto, warn: auto, ..args) = {
+#let overflow-mode(
+  mode: auto,
+  min: auto,
+  marker: auto,
+  marker-threshold: auto,
+  warn: auto,
+  ..args,
+) = {
   let mode = if args.pos().len() > 0 { args.pos().at(0) } else { mode }
   let override = (:)
   if mode != auto { override.mode = mode }
   if min != auto { override.min = min }
   if marker != auto { override.marker = marker }
+  if marker-threshold != auto { override.marker-threshold = marker-threshold }
   if warn != auto { override.warn = warn }
   body => touying-set-config(
     config-store(overflow-override: override),
@@ -1969,6 +2014,9 @@
   overflow: "shrink",
   overflow-min: 70%,
   overflow-marker: true,
+  // Overflow minimo (percentuale) sotto il quale il marker non viene
+  // mostrato anche se `overflow-marker` e' true; 0% lo mostra sempre.
+  overflow-marker-threshold: 0%,
   overflow-warn: true,
   // Lingua delle poche diciture composte dal tema (la numerazione della
   // dispensa, il segnaposto delle attivita' interattive). `auto` segue
@@ -2078,6 +2126,7 @@
         mode: overflow,
         min: overflow-min,
         marker: overflow-marker,
+        marker-threshold: overflow-marker-threshold,
         warn: overflow-warn,
       ),
       overflow-override: (:),

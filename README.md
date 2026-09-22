@@ -342,6 +342,7 @@ warning: [uniud-touying] contenuto in overflow a pagina 12, ridotto all'82%
   overflow: "shrink",      // "shrink" (default), "mark", "error", "ignore"
   overflow-min: 70%,       // how far down the shrink may go
   overflow-marker: true,   // the red badge
+  overflow-marker-threshold: 0%, // minimum overflow before the badge shows
   overflow-warn: true,     // the compiler warning
 )
 
@@ -350,6 +351,7 @@ warning: [uniud-touying] contenuto in overflow a pagina 12, ridotto all'82%
 
 #show: overflow-mode("ignore")      // for `== Heading` slides, like wide-mode
 #show: overflow-mode(marker: false) // shrink quietly
+#show: overflow-mode(marker-threshold: 10%) // badge only past 10% overflow
 #show: overflow-mode(auto)          // back to the theme settings
 ```
 
@@ -358,7 +360,12 @@ warns: a scaled block cannot break, so shrinking would drop the excess text
 instead of carrying it over. A flagged extra slide beats a lost paragraph.
 
 Shipping a deck usually means `overflow-marker: false` with the warning left
-on: the PDF stays clean, the crowded slides still show up in the build log.
+on: the PDF stays clean, the crowded slides still show up in the build log. A
+softer middle ground is `overflow-marker-threshold` (or `overflow-mode`'s
+matching argument): the badge only shows once the overflow passes the given
+threshold, so a few percentage points of shrink — barely visible, and often
+not worth trimming content over — do not litter the deck with badges. It
+defaults to `0%`, which shows the badge for any overflow, same as before.
 
 ## Captions
 

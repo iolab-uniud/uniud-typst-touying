@@ -619,6 +619,7 @@ typst query --root . --field value lezione.typ "<pdfpc-file>" --one > lezione.pd
   overflow: "shrink",          // vedi «Quando il contenuto non ci sta»
   overflow-min: 70%,           // riduzione massima consentita
   overflow-marker: true,       // badge rosso sulle slide che sforano
+  overflow-marker-threshold: 0%, // overflow minimo perche' il badge compaia
   overflow-warn: true,         // warning del compilatore
   lang: auto,                  // auto = la lingua del documento (`text.lang`)
   strings: (:),                // diciture del tema da sovrascrivere
@@ -945,13 +946,19 @@ politica con `#show:`, come per `wide-mode`.
 ```typst
 #show: overflow-mode("ignore")       // lascia traboccare da qui in avanti
 #show: overflow-mode(marker: false)  // riduci in silenzio, senza badge
+#show: overflow-mode(marker-threshold: 10%) // badge solo oltre il 10% di overflow
 #show: overflow-mode(warn: false)    // niente warning del compilatore
 #show: overflow-mode(auto)           // torna alle impostazioni del tema
 ```
 
 Per la consegna conviene spegnere il badge (`overflow-marker: false`) e tenere
 acceso il warning: le slide troppo piene restano segnalate in compilazione, ma
-il PDF resta pulito.
+il PDF resta pulito. Un compromesso più morbido è `overflow-marker-threshold`
+(o l'argomento omonimo di `overflow-mode`): il badge compare solo se
+l'overflow supera la soglia indicata, cosi' gli sforamenti di una manciata di
+punti percentuale — quasi invisibili, e spesso non correggibili senza tagliare
+contenuto — non riempiono il mazzo di badge. Di default e' `0%`: il badge
+compare per qualunque overflow, come finora.
 
 #### Quello che è troppo largo
 
