@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0 - 2026-09-22
+
+- Aggiunta una soglia minima di overflow (`marker-threshold`) sotto la quale il badge di avviso non viene mostrato, utile per silenziare gli sforamenti trascurabili.
+
 ## 0.3.5 - 2026-09-21
 
 - Corretto `#alert[..]` affinché funzioni anche fuori dalle slide (es. nelle celle di tabella) e negli handout, dove il testo prima spariva
