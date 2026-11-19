@@ -553,6 +553,12 @@ def merge_sort(a):
 Text that has to *flow* from one column into the next is Typst's own
 `#columns(2)[...]`; `side-by-side` is for independent blocks.
 
+Columns with steps (`#pause`, `focus-list`, `uncover`, ...) play one after
+the other: the whole left column top to bottom, then the right one. Columns
+without steps stay as they are. For an item-by-item comparison,
+`side-by-side(parallel: true)` starts every column together; the same holds
+for `#slide(parallel: true)[...][...]`.
+
 Four more are whole slides, called explicitly:
 
 | slide | what it is |

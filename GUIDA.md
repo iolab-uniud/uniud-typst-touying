@@ -347,6 +347,28 @@ Due cose diverse, che è bene non confondere:
 `side-by-side` accetta un numero qualsiasi di blocchi e li distribuisce in
 colonne uguali.
 
+Se le colonne hanno dei passi (`#pause`, `focus-list`, `uncover`...), si
+svolgono una dopo l'altra: prima tutta la colonna di sinistra, dall'alto in
+basso, poi quella di destra. Le colonne senza passi, come un'immagine o un
+testo fisso, non cambiano. Quando le colonne vanno confrontate voce per voce,
+`parallel: true` le fa avanzare insieme:
+
+```typst
+#side-by-side(parallel: true)[
+  #focus-list[
+    - Mergesort: $Theta(n log n)$ sempre
+    - Stabile
+  ]
+][
+  #focus-list[
+    - Quicksort: $Theta(n^2)$ nel caso peggiore
+    - Non stabile
+  ]
+]
+```
+
+Lo stesso vale per le slide a più corpi, `#slide(parallel: true)[...][...]`.
+
 ### Codice e output
 
 ````typst
@@ -1125,7 +1147,7 @@ I ruoli sono `title`, `subtitle`, `number`, `body-large`, `body`, `meta`,
 | funzione | argomenti |
 | --- | --- |
 | `callout` | `title`, `accent`, `fill` |
-| `side-by-side` | `gutter`, `align-items`, + blocchi |
+| `side-by-side` | `gutter`, `align-items`, `parallel`, + blocchi |
 | `code-box` | `caption`, `numbered`, `highlight`, `steps`, `start`, `fill`, `stroke`, `ink`, `size` |
 | `output-box` | `caption`, `numbered`, `size` |
 | `uniud-table` | argomenti di `table` |

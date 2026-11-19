@@ -552,9 +552,24 @@
       // regione di prova deve essere alta esattamente quanto quella vera,
       // altrimenti cio' che si impagina per regioni (`columns`) si dispone in
       // un altro modo e la misura non dice piu' niente di utile.
+      //
+      // Quella misura pero' satura anche quando il corpo contiene spaziature
+      // frazionarie — `#v(1fr)` per spingere una nota in fondo — che per
+      // definizione si allargano fino a riempire la regione, e la slide
+      // risulterebbe sempre in overflow. Durante la misura (e solo li') le si
+      // azzera: resta l'altezza vera del contenuto, e le spaziature tornano
+      // a prendersi lo spazio libero nel layout reale. Sostituirle con
+      // `v(0pt)` invece di toglierle conserva l'interruzione di paragrafo.
+      // Le altezze relative (`block(height: 100%)`, `media-box`) restano
+      // misurate come sono: sotto il titolo una piena altezza non ci sta
+      // davvero, e traboccherebbe sulla pagina dopo.
+      let measured = {
+        show v: it => if type(it.amount) == fraction { v(0pt, weak: it.weak) } else { it }
+        body
+      }
       let too-tall(k) = {
         let h = size.height / k
-        measure(width: size.width / k, height: h, body).height > h - 0.25pt
+        measure(width: size.width / k, height: h, measured).height > h - 0.25pt
       }
       if not too-tall(1.0) {
         body
@@ -609,20 +624,24 @@
         } else {
           // Invariante: `lo` sta, `hi` no.
           let factor = _overflow-bisect(too-tall, lo)
-          if factor >= _overflow-deadband {
-            // Saturava la regione ma bastava una briciola: e' il caso del
-            // contenuto che la riempie esatta (tipicamente `columns`).
-            // Ridurlo dell'un per cento non serve a nessuno, segnalarlo
-            // ancora meno.
-            return body
-          }
-          std.scale(
+          let shrunk = std.scale(
             x: factor * 100%,
             y: factor * 100%,
             origin: top + left,
             reflow: true,
             block(width: size.width / factor, height: size.height / factor, body),
           )
+          if factor >= _overflow-deadband {
+            // Saturava la regione ma bastava una briciola: o il contenuto la
+            // riempie esatta (tipicamente `columns`), o sfora davvero di
+            // poche righe. Dal fattore non si distinguono, e nel secondo caso
+            // il corpo lasciato a grandezza piena traboccherebbe su una
+            // pagina a se' senza alcun avviso. Quindi si riduce comunque —
+            // a questo fattore la differenza non si vede — ma non lo si
+            // segnala: badge e warning sarebbero rumore.
+            return shrunk
+          }
+          shrunk
           if cfg.warn {
             _overflow-warn(
               "contenuto in overflow a pagina "
@@ -728,6 +747,64 @@
   touying-slide(self: self, config: config, body)
 }
 
+// -----------------------------------------------------------------------------
+// Colonne con passi
+// -----------------------------------------------------------------------------
+
+// Touying svolge le colonne di una griglia come un unico flusso, ma senza
+// separarle: dopo l'ultimo passo della colonna a sinistra quella a destra
+// riparte dallo stesso passo, e una `focus-list` (che non fa avanzare il
+// contatore) parte addirittura insieme a quella accanto. Il risultato sono
+// colonne che avanzano in parallelo. Un `#pause` in testa alla colonna
+// successiva le mette in fila: Touying lo fa scattare dopo l'intero
+// intervallo di cio' che precede, liste a fuoco comprese.
+//
+// Il `#pause` si inserisce solo tra colonne che hanno passi entrambe: una
+// colonna statica (un'immagine, un testo fisso) non deve aspettare, e un
+// passo in piu' in fondo alla slide produrrebbe una sottoslide vuota.
+
+// La colonna contiene marcatori di Touying (pause, meanwhile, wrapper)?
+#let _has-steps(body) = (
+  type(body) == content and repr(body).contains("kind: \"touying-")
+)
+
+// La colonna si apre con un salto esplicito (`#meanwhile`, `#jump`)? Allora
+// la sua tempistica l'ha gia' decisa l'autore.
+#let _starts-with-jump(body) = {
+  let children = if type(body) != content {
+    ()
+  } else if utils.is-sequence(body) {
+    body.children
+  } else {
+    (body,)
+  }
+  let first = children
+    .filter(c => type(c) != content or c.func() not in ([ ].func(), parbreak, linebreak))
+    .at(0, default: none)
+  (
+    type(first) == content
+      and first.func() == metadata
+      and type(first.value) == dictionary
+      and first.value.at("kind", default: none) == "touying-jump/pause/meanwhile"
+  )
+}
+
+#let _sequence-columns(bodies, parallel: false) = {
+  if parallel { return bodies }
+  let seen-steps = false
+  let out = ()
+  for body in bodies {
+    let steps = _has-steps(body)
+    if steps and seen-steps and not _starts-with-jump(body) {
+      out.push([#pause#body])
+    } else {
+      out.push(body)
+    }
+    seen-steps = seen-steps or steps
+  }
+  out
+}
+
 /// Generic content slide: blue band plus the corporate text area
 /// (column 5 to the right margin, top anchor at 9,5 cm).
 #let slide(
@@ -737,6 +814,7 @@
   composer: auto,
   overflow: auto,
   scale: auto,
+  parallel: false,
   ..bodies,
 ) = touying-slide-wrapper(self => {
   let g = self.store.uniud-layout
@@ -765,7 +843,9 @@
     // della sottoslide inclusa.
     setting: body => _fit(self, setting(body), overflow: overflow, scale: scale),
     composer: composer,
-    ..bodies,
+    // Piu' corpi sono colonne: si svolgono in fila come in `side-by-side`.
+    .._sequence-columns(bodies.pos(), parallel: parallel),
+    ..bodies.named(),
   )
 })
 
@@ -1310,8 +1390,13 @@
 ///
 /// For text that should *flow* from one column into the next, use Typst's own
 /// `#columns(2)[...]` instead.
-#let side-by-side(gutter: .6em, align-items: top, ..bodies) = {
-  let items = bodies.pos()
+///
+/// Le colonne con passi (`#pause`, `focus-list`, `uncover`...) si svolgono una
+/// dopo l'altra: prima tutta la sinistra, dall'alto in basso, poi la destra.
+/// Le colonne senza passi restano come sono. `parallel: true` fa invece
+/// partire tutte le colonne insieme, per i confronti voce per voce.
+#let side-by-side(gutter: .6em, align-items: top, parallel: false, ..bodies) = {
+  let items = _sequence-columns(bodies.pos(), parallel: parallel)
   grid(
     columns: (1fr,) * items.len(),
     column-gutter: gutter,
