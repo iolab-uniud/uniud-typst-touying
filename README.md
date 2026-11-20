@@ -232,6 +232,7 @@ included.
 ```
 ./scripts/make-handout.sh lecture.typ             # → lecture-handout.pdf
 ./scripts/make-handout.sh lecture.typ --no-notes
+./scripts/make-handout.sh lecture.typ --no-outline   # drops the outline-slide
 ```
 
 The script takes the *source*, not the slide PDF: the handout is not a montage
@@ -513,7 +514,7 @@ Most of them are **elements**: they go inside an ordinary slide, under a
 
 | element | what it is |
 | ------------------------------------------- | ----------------------------------- |
-| `#callout(title: [Teorema])[...]`            | titled block: definitions, theorems, examples, warnings |
+| `#callout(title: [Teorema])[...]`            | titled block on a light tint: definitions, theorems, examples, warnings |
 | `#side-by-side[...][...]`                    | two or more blocks abreast, on the column gutter |
 | `#code-box(caption:, numbered:, highlight:)` | code frame with line numbers and emphasised lines |
 | `#focus-list[...]`                           | list walked one item at a time, the current one in full ink |
@@ -521,6 +522,16 @@ Most of them are **elements**: they go inside an ordinary slide, under a
 | `#output-box(caption:)[...]`                 | the same frame in negative, for a result or a terminal |
 | `#uniud-table(columns: .., ..)`              | table with no vertical rules and a blue header rule |
 | `#media-box[...]`                            | image placeholder |
+| `#credited-figure(img, [credit])`            | image with a small credit line (source, licence) |
+| `#flow([..], [..], current: 2)`              | chain of steps, the current one tinted; `flow-node`/`flow-arrow` for hand-made grids |
+| `#roadmap(..blocks, current: 2)`             | course map: every block in grey, the current one in blue |
+| `#badge[...]`, `#slide-tag[...]`             | small uppercase label; `slide-tag` sits level with the title |
+
+`callout` has three styles: `"panel"` (default: rule on top, label, light
+tint of the accent), `"rule"` (rule and label on white, the look up to 0.5) and
+`"header"` (label on a solid strip). Pick one per block with `style:`, or for
+the whole lecture with `callout-style:` in the theme; `fill:` replaces the tint
+and `fill: none` removes it.
 
 `code-box` is filled with a light grey by default; `fill: none, stroke: .06em +
 uniud-gray` gives the outlined variant on white, and any other `fill`/`ink` pair

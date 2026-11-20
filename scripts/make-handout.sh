@@ -29,6 +29,7 @@ Opzioni:
   --root DIR        radice dei percorsi per typst (default: cartella del sorgente)
   --no-notes        lascia fuori le note del relatore
   --interactive     tiene le attività interattive invece del segnaposto
+  --no-outline      toglie l'indice (`outline-slide`)
 USAGE
     exit 1
 }
@@ -40,6 +41,7 @@ FONT_PATH=""
 ROOT=""
 NOTES=1
 INTERACTIVE=0
+OUTLINE=1
 PASSTHROUGH=()
 
 while [[ $# -gt 0 ]]; do
@@ -48,6 +50,7 @@ while [[ $# -gt 0 ]]; do
         --root) [[ $# -ge 2 ]] || usage; ROOT="$2"; shift 2 ;;
         --no-notes) NOTES=0; shift ;;
         --interactive) INTERACTIVE=1; shift ;;
+        --no-outline) OUTLINE=0; shift ;;
         -h|--help) usage ;;
         --) shift; PASSTHROUGH+=("$@"); break ;;
         -*) usage ;;
@@ -75,6 +78,7 @@ ARGS=(compile --root "$ROOT" --input uniud-handout=a4)
 [[ -n "$FONT_PATH" ]] && ARGS+=(--font-path "$FONT_PATH")
 [[ "$NOTES" -eq 0 ]] && ARGS+=(--input uniud-handout-notes=no)
 [[ "$INTERACTIVE" -eq 1 ]] && ARGS+=(--input uniud-handout-interactive=yes)
+[[ "$OUTLINE" -eq 0 ]] && ARGS+=(--input uniud-handout-outline=no)
 
 typst "${ARGS[@]}" "${PASSTHROUGH[@]}" "$SRC" "$OUT"
 echo "Dispensa in $OUT"

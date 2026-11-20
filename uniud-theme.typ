@@ -1121,6 +1121,34 @@
   block(width: width, height: height, _with-caption(caption, media))
 }
 
+/// An image (or any figure) with its credit line underneath: source, author,
+/// licence. The credit is set small and grey, below everything else; an
+/// optional `caption` goes between the image and the credit, in the caption
+/// style.
+///
+/// ```typst
+/// #credited-figure(
+///   image("assets/tablet.jpg", height: 46mm),
+///   [Credit line — licence],
+/// )
+/// ```
+///
+/// Takes the image itself, not a path: paths are resolved relative to the file
+/// that contains them, so `image(..)` has to stay in the lecture.
+#let credited-figure(body, credit, caption: none, align: center) = block(
+  width: 100%,
+  breakable: false,
+  stack(
+    dir: ttb,
+    std.align(align, body),
+    ..if caption != none {
+      (.4em, std.align(align, text(size: _caption-size, fill: uniud-dark-gray, caption)))
+    },
+    .3em,
+    std.align(align, text(size: .4em, fill: uniud-dark-gray, credit)),
+  ),
+)
+
 #let _placed(dx, dy, width, height, body) = place(
   top + left,
   dx: _pc(dx),
@@ -1356,25 +1384,350 @@
   }
 }
 
+// Le tinte sono quelle che il manuale ammette, retini dei colori istituzionali:
+// gli accenti neutri (nero, grigi) prendono il grigio UNIUD al 30%, gli altri
+// — il blu UNIUD, quello del master PowerPoint, un `primary` su misura — un
+// retino al 7% di se stessi.
+#let _callout-tint(accent) = if accent in (uniud-black, uniud-dark-gray, uniud-gray, uniud-gray-web) {
+  uniud-gray.lighten(70%)
+} else {
+  accent.lighten(93%)
+}
+
+#let _callout-label(ink, title) = text(
+  size: .55em,
+  weight: "bold",
+  fill: ink,
+  tracking: .02em,
+  upper(title),
+)
+
+#let _callout(style, title, accent, fill, body) = {
+  if style == "rule" {
+    // Lo stile storico: filetto ed etichetta sul bianco. Un `fill` esplicito
+    // si comporta come prima, con il fondo dentro il margine.
+    let fill = if fill == auto { none } else { fill }
+    return block(
+      width: 100%,
+      fill: fill,
+      inset: if fill == none { 0pt } else { (x: .5em, y: .45em) },
+      breakable: false,
+      {
+        _label-rule(accent, title)
+        body
+      },
+    )
+  }
+  let fill = if fill == auto { _callout-tint(accent) } else { fill }
+  // Il fondo non deve costare spazio: chi passa dallo stile "rule" al "panel"
+  // non deve trovarsi slide piene ridotte o in overflow. I margini interni sono
+  // stretti, e quelli sopra e sotto vengono sottratti alla spaziatura che
+  // separa comunque il blocco dal testo intorno: il fondo si allarga nello
+  // spazio bianco che c'era gia', invece di spingere giu' la slide.
+  let inset = (x: .3em, top: .3em, bottom: .4em)
+  let spacing = par.spacing
+  block(
+    width: 100%,
+    breakable: false,
+    above: calc.max(0pt, (spacing - inset.top).to-absolute()),
+    below: calc.max(0pt, (spacing - inset.bottom).to-absolute()),
+    {
+      if style == "header" and title != none {
+        block(
+          width: 100%,
+          fill: accent,
+          inset: (x: inset.x, y: .3em),
+          above: 0pt,
+          below: 0pt,
+          _callout-label(uniud-white, title),
+        )
+      } else {
+        block(width: 100%, height: .1em, fill: accent, above: 0pt, below: 0pt)
+      }
+      block(
+        width: 100%,
+        fill: fill,
+        inset: inset,
+        above: 0pt,
+        {
+          if style == "panel" and title != none {
+            block(above: 0pt, below: .35em, _callout-label(accent, title))
+          }
+          body
+        },
+      )
+    },
+  )
+}
+
 /// Titled block for definitions, theorems, examples and remarks.
 ///
 /// ```typst
 /// #callout(title: [Definizione])[Un grafo è una coppia ...]
-/// #callout(title: [Attenzione], accent: uniud-black, fill: uniud-gray.lighten(80%))[...]
+/// #callout(title: [Attenzione], accent: uniud-black)[...]
+/// #callout(title: [Teorema], style: "header")[...]
 /// ```
 ///
 /// - title: label above the block; `none` draws the rule alone.
 /// - accent: colour of the rule and of the label.
-/// - fill: optional background.
-#let callout(title: none, accent: uniud-blue, fill: none, body) = block(
-  width: 100%,
-  fill: fill,
-  inset: if fill == none { 0pt } else { (x: .5em, y: .45em) },
-  breakable: false,
-  {
-    _label-rule(accent, title)
-    body
-  },
+/// - fill: background. `auto` is a light tint — UNIUD grey for black and grey
+///   accents, a 7% tint of the accent otherwise — in the "panel" and "header"
+///   styles, and nothing in the "rule" style; `none` removes it.
+/// - style: "panel" (rule on top, tinted background), "rule" (rule and label
+///   only) or "header" (label on a solid strip). `auto` follows the theme's
+///   `callout-style`, "panel" unless set otherwise.
+#let callout(title: none, accent: uniud-blue, fill: auto, style: auto, body) = {
+  if style != auto { _check-callout-style(style) }
+  context _callout(
+    if style == auto { _callout-style.get() } else { style },
+    title,
+    accent,
+    fill,
+    body,
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Flussi e mappe di percorso
+// -----------------------------------------------------------------------------
+//
+// Una catena di passi da sinistra a destra: un processo, una pipeline, le parti
+// di un corso. I tre mattoni — nodo, freccia, freccia con etichetta — servono
+// per le composizioni fatte a mano in una `grid`; `flow` e `roadmap` le
+// montano da soli, con i nodi tutti della stessa altezza. Niente fletcher: e'
+// una griglia, quindi segue la larghezza della colonna e va a capo dentro i
+// nodi invece di uscire dalla slide.
+
+// `current` puo' essere un indice (da 1), un array di indici, "all" o `none`.
+#let _flow-current(current, n) = if current == none {
+  ()
+} else if current == "all" {
+  range(1, n + 1)
+} else if type(current) == array {
+  current
+} else {
+  (current,)
+}
+
+/// One step of a flow: a frame with its label centred. `accent: true` (or a
+/// colour) marks the step in focus with the accent stroke and the light tint
+/// of the callouts.
+#let flow-node(body, accent: false, height: auto, size: .62em) = {
+  let c = if accent == true { uniud-blue } else if type(accent) == color { accent } else { none }
+  block(
+    width: 100%,
+    height: height,
+    inset: (x: .32em, y: .3em),
+    breakable: false,
+    stroke: if c != none { .05em + c } else { .04em + uniud-gray },
+    fill: if c != none { _callout-tint(c) } else { none },
+    align(center + horizon, text(size: size, weight: "bold", body)),
+  )
+}
+
+/// The arrow between two flow nodes.
+#let flow-arrow = align(center + horizon, text(size: 1.05em, fill: uniud-dark-gray)[→])
+
+/// A flow arrow with a small label underneath. The label takes no vertical
+/// space, so the arrow stays on the centre line of the nodes beside it.
+#let flow-arrow-labelled(label, width: 24mm) = align(center + horizon, box({
+  text(size: 1.05em, fill: uniud-dark-gray)[→]
+  place(
+    top + center,
+    dy: 1.05em,
+    box(width: width, align(center, text(size: .36em, fill: uniud-dark-gray, label))),
+  )
+}))
+
+// Il testo semplice di un'etichetta, per misurarne le parole una per una:
+// dentro un nodo le righe vanno a capo tra le parole, quindi quello che deve
+// entrare e' la parola piu' lunga, non la riga. Cio' che non e' testo (una
+// formula, un'immagine) non conta.
+#let _plain-text(c) = {
+  if type(c) == str { return c }
+  if type(c) != content { return "" }
+  if c.has("text") { return c.text }
+  if c.has("children") { return c.children.map(_plain-text).join(" ") }
+  if c.has("body") { return _plain-text(c.body) }
+  if c.has("child") { return _plain-text(c.child) }
+  " "
+}
+
+// La riga di nodi: le colonne si dividono la larghezza, le frecce prendono
+// quella che serve, e tutti i nodi prendono l'altezza del piu' alto. Se la
+// parola piu' lunga non entra in un nodo — "interpretation" in sette colonne
+// strette — tutte le etichette si riducono dello stesso fattore, cosi' i nodi
+// restano coerenti tra loro e niente esce dalla cornice.
+//
+// - label(i, k, override: none): l'etichetta del passo i al fattore k; con
+//   `override` lo stesso stile applicato a un'altra stringa (per misurare);
+// - frame(i, h, body): la cornice del passo i, alta h.
+#let _flow-row(n, label, frame, arrow, gutter, height, inset-x) = layout(size => {
+  let aw = measure(arrow).width
+  let w = (size.width - (n - 1) * (aw + 2 * gutter.to-absolute())) / n
+  let room = w - 2 * inset-x.to-absolute()
+  // `label(i, 1.0)` porta con se' corpo e peso del testo: si misura ogni
+  // parola con lo stesso stile, rimettendola al posto del contenuto.
+  let widest = calc.max(0pt, ..range(n).map(i => {
+    let lab = label(i, 1.0)
+    let words = _plain-text(lab).split(regex("\\s+")).filter(w => w != "")
+    calc.max(0pt, ..words.map(w => measure(label(i, 1.0, override: w)).width))
+  }))
+  let k = if widest > room { room / widest } else { 1.0 }
+  let node(i, h) = frame(i, h, label(i, k))
+  let h = if height != auto {
+    height
+  } else {
+    calc.max(..range(n).map(i => measure(node(i, auto), width: w).height))
+  }
+  let cells = ()
+  for i in range(n) {
+    if i > 0 { cells.push(arrow) }
+    cells.push(node(i, h))
+  }
+  grid(
+    columns: (1fr, auto) * (n - 1) + (1fr,),
+    column-gutter: gutter,
+    align: horizon,
+    ..cells,
+  )
+})
+
+/// A chain of steps, left to right, all nodes the same height.
+///
+/// ```typst
+/// #flow([Question], [Data], [Model], [Report], current: 3)
+/// ```
+///
+/// - current: 1-based index of the step in focus, an array of indices, "all",
+///   or `none`.
+/// - height: node height; `auto` takes the tallest label.
+/// - size: label size; it shrinks on its own when a word does not fit.
+#let flow(current: none, height: auto, size: .62em, gutter: .15em, ..steps) = {
+  let steps = steps.pos()
+  let cur = _flow-current(current, steps.len())
+  _flow-row(
+    steps.len(),
+    (i, k, override: none) => text(
+      size: size * k,
+      weight: "bold",
+      if override == none { steps.at(i) } else { override },
+    ),
+    (i, h, body) => {
+      let here = (i + 1) in cur
+      block(
+        width: 100%,
+        height: h,
+        inset: (x: .32em, y: .3em),
+        breakable: false,
+        stroke: if here { .05em + uniud-blue } else { .04em + uniud-gray },
+        fill: if here { _callout-tint(uniud-blue) } else { none },
+        align(center + horizon, body),
+      )
+    },
+    flow-arrow,
+    gutter,
+    height,
+    .32em,
+  )
+}
+
+/// The map of a course, or of any path in parts: every part in grey, the
+/// current one in the accent colour. Each lesson can open with it, so the
+/// class always knows where it stands.
+///
+/// ```typst
+/// #let blocks = ([Python], [Data handling], [ML foundations], [Clustering])
+/// #roadmap(..blocks, current: 2)
+/// #roadmap(..blocks, current: 2, compact: true)   // as a strip inside a slide
+/// ```
+///
+/// - current: 1-based index, an array of indices, "all" or `none`.
+/// - compact: smaller labels and frames.
+#let roadmap(current: none, compact: false, height: auto, ..steps) = {
+  let steps = steps.pos()
+  let cur = _flow-current(current, steps.len())
+  let size = if compact { .42em } else { .52em }
+  let pad = if compact { .45em } else { .8em }
+  _flow-row(
+    steps.len(),
+    (i, k, override: none) => text(
+      size: size * k,
+      weight: "bold",
+      fill: if (i + 1) in cur { uniud-blue } else { uniud-dark-gray },
+      if override == none { steps.at(i) } else { override },
+    ),
+    (i, h, body) => {
+      let here = (i + 1) in cur
+      block(
+        width: 100%,
+        height: h,
+        inset: (x: .3em, y: pad),
+        breakable: false,
+        stroke: if here { .06em + uniud-blue } else { .04em + uniud-gray },
+        fill: if here { _callout-tint(uniud-blue) } else { none },
+        align(center + horizon, body),
+      )
+    },
+    align(center + horizon, text(size: .7em, fill: uniud-gray)[→]),
+    if compact { .1em } else { .2em },
+    height,
+    .3em,
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Etichette
+// -----------------------------------------------------------------------------
+
+/// Gli stili delle etichette, tutti nei colori del manuale.
+#let _badge-styles = (
+  // contorno e testo blu su fondo tenue
+  blue: (ink: uniud-blue, fill: auto, stroke: uniud-blue),
+  // bianco su blu pieno
+  solid: (ink: uniud-white, fill: uniud-blue, stroke: uniud-blue),
+  // grigio scuro su grigio tenue
+  gray: (ink: uniud-dark-gray, fill: auto, stroke: uniud-dark-gray),
+  // grigio scuro su bianco
+  outline: (ink: uniud-dark-gray, fill: uniud-white, stroke: uniud-dark-gray),
+)
+
+/// A small uppercase label, inline: for legends, tables, or a slide tag.
+///
+/// ```typst
+/// #badge[Python-specific]
+/// #badge(style: "gray")[Enrichment · not in the exam]
+/// ```
+///
+/// - style: "blue" (default), "solid", "gray" or "outline".
+#let badge(style: "blue", body) = {
+  assert(
+    style in _badge-styles,
+    message: "badge: stile " + repr(style) + " sconosciuto; ammessi: "
+      + _badge-styles.keys().map(repr).join(", "),
+  )
+  let s = _badge-styles.at(style)
+  box(
+    inset: (x: .45em, y: .22em),
+    fill: if s.fill == auto { _callout-tint(s.stroke) } else { s.fill },
+    stroke: .03em + s.stroke,
+    text(size: .42em, weight: "bold", fill: s.ink, tracking: .06em, upper(body)),
+  )
+}
+
+/// A badge in the top-right corner of the slide, level with the title: what
+/// kind of slide this is — a recap, a self-study page, a lab note. Put it on
+/// the first line after the `== Title`; it takes no vertical space. In the A4
+/// handout it is set right-aligned in the flow instead.
+///
+/// ```typst
+/// == Blocks: indentation instead of braces
+/// #slide-tag[Python-specific]
+/// ```
+#let slide-tag(style: "blue", dy: .3em, body) = place(
+  top + right,
+  dy: dy,
+  badge(style: style, body),
 )
 
 /// Una riga sottovoce: piu' piccola e in grigio, per la precisazione che
@@ -1699,6 +2052,10 @@
 /// Strike a fragment through on the given subslides — a claim being corrected,
 /// a step being cancelled out.
 #let strike-at(subslides, body) = effect(strike, subslides, body)
+
+/// Underline a fragment on the given subslides — the word the explanation is
+/// about right now, without changing its colour.
+#let underline-at(subslides, body) = effect(underline, subslides, body)
 
 /// Push a fragment into the background on the given subslides: the opposite
 /// move, useful to make everything else recede around what matters now.
@@ -2111,6 +2468,10 @@
   // Codice dell'evento Wooclap del corso: dichiarato qui, `#wooclap()` sulle
   // slide non deve ripeterlo.
   wooclap-code: none,
+  // Stile predefinito dei callout: "panel" (filetto e fondo tenue), "rule"
+  // (solo filetto) o "header" (testata piena). Il singolo callout lo cambia
+  // con `style:`.
+  callout-style: "panel",
   ..args,
   body,
 ) = {
@@ -2146,6 +2507,7 @@
   set text(lang: lang) if lang != auto
   uniud-set-strings(lang: lang, strings: strings)
   uniud-set-wooclap(wooclap-code)
+  uniud-set-callout-style(callout-style)
   set par(leading: (60 / 54 - cap-height) * 1em)
 
   show raw: set text(font: code-font)
@@ -2275,12 +2637,15 @@
 #let outline-slide = if _handout-a4 { uniud-handout.outline-slide } else { outline-slide }
 #let references-slide = if _handout-a4 { uniud-handout.references-slide } else { references-slide }
 #let media-box = if _handout-a4 { uniud-handout.media-box } else { media-box }
+#let credited-figure = if _handout-a4 { uniud-handout.credited-figure } else { credited-figure }
+#let slide-tag = if _handout-a4 { uniud-handout.slide-tag.with(badge) } else { slide-tag }
 #let focus-list = if _handout-a4 { uniud-handout.focus-list } else { focus-list }
 #let dimmed = if _handout-a4 { uniud-handout.dimmed } else { dimmed }
 #let alert = if _handout-a4 { uniud-handout.alert } else { alert }
 #let alert-at = if _handout-a4 { uniud-handout.alert-at } else { alert-at }
 #let mark-at = if _handout-a4 { uniud-handout.mark-at } else { mark-at }
 #let strike-at = if _handout-a4 { uniud-handout.strike-at } else { strike-at }
+#let underline-at = if _handout-a4 { uniud-handout.underline-at } else { underline-at }
 #let dim-at = if _handout-a4 { uniud-handout.dim-at } else { dim-at }
 #let wide-mode = if _handout-a4 { uniud-handout.wide-mode } else { wide-mode }
 #let overflow-mode = if _handout-a4 { uniud-handout.overflow-mode } else { overflow-mode }
@@ -2344,7 +2709,10 @@
   qr-fill: uniud-black,
   placeholder: auto,
 ) = context {
-  let code = if code == auto { _wooclap-code.final() } else { code }
+  // Il codice si legge dove si trova il riquadro, non alla fine del
+  // documento: in una dispensa che concatena piu' lezioni, ognuna col proprio
+  // evento, `final()` darebbe a tutte il codice dell'ultima.
+  let code = if code == auto { _wooclap-code.get() } else { code }
   assert(
     code != none,
     message: "uniud-touying: manca il codice dell'evento Wooclap. Passalo al tema"

@@ -321,8 +321,28 @@ sotto un `== Titolo`, così i titoli continuano a funzionare come sempre.
 ]
 ```
 
-`accent` colora filetto ed etichetta, `fill` aggiunge un fondo. Con
-`title: none` resta il solo filetto.
+`accent` colora filetto ed etichetta. Il fondo, se non lo si indica, è una
+tinta chiara dell'accento: grigio UNIUD al 30% per gli accenti neutri (nero e
+grigi), un retino al 7% dell'accento per tutti gli altri, blu compreso. `fill` lo sostituisce, `fill: none` lo toglie. Con
+`title: none` restano filetto e fondo.
+
+Tre stili, scelti con `style:` sul singolo blocco o con `callout-style:` nel
+tema per tutta la lezione:
+
+| stile | aspetto |
+| --- | --- |
+| `"panel"` (predefinito) | filetto in testa, etichetta e fondo tenue |
+| `"rule"` | solo filetto ed etichetta sul bianco: lo stile fino alla 0.5 |
+| `"header"` | etichetta in bianco su una testata piena, corpo su fondo tenue |
+
+```typst
+#show: uniud-theme.with(callout-style: "rule", ...)   // tutta la lezione
+
+#callout(title: [Teorema], style: "header")[...]     // un blocco solo
+```
+
+`"header"` è il più forte dei tre: va tenuto per il risultato chiave, non per
+ogni definizione.
 
 ### Colonne
 
@@ -445,6 +465,83 @@ grigio scuro) e toglie la numerazione, che sulle slide raramente serve.
 
 Per rimettere i numeri: `#set figure(numbering: "1")`.
 
+Per un'immagine che porta con sé fonte, autore o licenza c'è
+`credited-figure`: la riga di credito va sotto, più piccola della didascalia,
+e resta tale anche nella dispensa A4.
+
+```typst
+#credited-figure(
+  image("assets/scheda.jpg", height: 50%),
+  [Foto: Archivio storico dell'Ateneo — CC BY 4.0],
+  caption: [Una scheda perforata degli anni Sessanta.],   // facoltativa
+)
+```
+
+Prende l'immagine, non il percorso: i percorsi si risolvono rispetto al file
+che li contiene, quindi `image(..)` deve restare nella lezione.
+
+### Flussi e mappa del percorso
+
+Una catena di passi da sinistra a destra — un processo, una pipeline — si
+scrive con `flow`; il passo di cui si parla si evidenzia con `current`, con la
+stessa tinta dei callout. I nodi prendono tutti l'altezza del più alto e, se la
+parola più lunga non entra nelle colonne, le etichette si riducono tutte dello
+stesso fattore.
+
+```typst
+#flow([Domanda e dati], [Pulizia], [Modello], [Validazione], current: 3)
+```
+
+`roadmap` è la stessa idea per la mappa di un corso: ogni blocco in grigio,
+quello corrente in blu. Conviene definire l'elenco dei blocchi una volta, nel
+preambolo comune del corso, e aprire ogni lezione con la mappa:
+
+```typst
+#let blocchi = ([Python], [Dati e grafici], [Fondamenti di ML], [Clustering])
+
+#roadmap(..blocchi, current: 2)                  // in apertura di lezione
+#roadmap(..blocchi, current: 2, compact: true)   // come striscia dentro una slide
+```
+
+`current` accetta un indice (da 1), un array di indici, `"all"` o `none`.
+Per composizioni più libere — frecce con un'etichetta, note sotto i nodi — ci
+sono i mattoni sciolti da mettere in una `grid`: `flow-node` (con
+`accent: true` per il nodo in evidenza), `flow-arrow` e
+`flow-arrow-labelled([etichetta])`.
+
+```typst
+#grid(
+  columns: (1fr, auto, 1fr, auto, 1fr),
+  gutter: .3em,
+  align: horizon,
+  flow-node[Fornitori], flow-arrow-labelled([materiali]),
+  flow-node(accent: true)[Produzione], flow-arrow,
+  flow-node[Clienti],
+)
+```
+
+### Etichette
+
+`badge` è un'etichetta piccola in maiuscolo, da usare nel testo, nelle legende,
+nelle tabelle. `slide-tag` la mette nell'angolo in alto a destra della slide,
+all'altezza del titolo, senza occupare spazio: serve a dire che tipo di slide è
+— un ripasso, un approfondimento facoltativo, una nota di laboratorio. Va sulla
+prima riga dopo il `== Titolo`. Nella dispensa A4 l'etichetta va nel flusso,
+allineata a destra, perché più slide condividono la stessa pagina.
+
+```typst
+== Blocchi: indentazione invece delle graffe
+#slide-tag[Specifico di Python]
+
+Legenda: #badge[Novità] #badge(style: "gray")[Facoltativo]
+```
+
+Gli stili sono quattro, tutti nei colori del manuale: `"blue"` (predefinito,
+blu su fondo tenue), `"solid"` (bianco su blu pieno), `"gray"` (grigio scuro su
+grigio tenue) e `"outline"` (grigio scuro su bianco). Per un tipo di etichetta
+usato spesso conviene una definizione nel preambolo del corso:
+`#let ripasso = slide-tag.with(style: "outline")[Ripasso]`.
+
 ### Slide intere
 
 ```typst
@@ -523,6 +620,7 @@ Prendono la stessa sintassi di `#only` — `2`, `(1, 3)`, `"2-4"`, `"3-"`.
 | `#alert-at("2")[...]` | lo colora di blu corporate |
 | `#mark-at("3")[...]` | ci passa sopra l'evidenziatore |
 | `#strike-at("4")[...]` | lo barra: un'affermazione che si corregge |
+| `#underline-at("5")[...]` | lo sottolinea, senza cambiarne il colore |
 | `#dim-at("4-")[...]` | lo manda in secondo piano, per far risaltare il resto |
 
 ```typst
@@ -703,7 +801,12 @@ al posto giusto:
 ./scripts/make-handout.sh lezione.typ               # → lezione-handout.pdf
 ./scripts/make-handout.sh lezione.typ --no-notes    # senza le note del relatore
 ./scripts/make-handout.sh lezione.typ --interactive # con le attività dal vivo
+./scripts/make-handout.sh lezione.typ --no-outline  # senza l'indice
 ```
+
+Le stesse scelte si possono fissare nel tema, così valgono per quella lezione
+a ogni compilazione: `notes: false`, `interactive: true`, `outline: false`.
+Sulle slide non hanno effetto.
 
 In VS Code c'è l'attività **Dispensa A4**, e un progetto creato con
 `typst init` se la porta già dietro: nel template c'è un `.vscode/` con le
@@ -802,7 +905,7 @@ Cosa diventa cosa:
 | `#pause`, liste a fuoco, codice passo passo | tutto in chiaro, niente passi |
 | `focus-slide` | richiamo su fondo blu |
 | `quote-slide` | citazione con filetto laterale |
-| `outline-slide` | indice del documento |
+| `outline-slide` | indice del documento (`outline: false` lo toglie) |
 | immagini e didascalie | figure con didascalia |
 | `#speaker-note` | blocco evidenziato in azzurro |
 | `#interactive` | segnaposto tratteggiato (`interactive: true` lo rimette) |
@@ -914,6 +1017,33 @@ corso/
   lezione-01/main.typ
   lezione-02/main.typ
 ```
+
+Le parti che si ripetono in ogni lezione — i dati del corso, le opzioni del
+tema, l'elenco dei blocchi per `roadmap` — stanno bene in un preambolo comune,
+per esempio `common/deck.typ`, che ogni lezione importa:
+
+```typst
+// common/deck.typ
+#import "@local/uniud-touying:0.5.0": *
+#let blocchi = ([Python], [Dati e grafici], [Fondamenti di ML])
+#let course-deck(title: none, ..extra) = body => {
+  show: uniud-theme.with(
+    slide-numbering: "1/1",
+    config-info(title: title, author: [Nome Cognome]),
+    ..extra,
+  )
+  body
+}
+
+// lezione-02/main.typ
+#import "../common/deck.typ": *
+#show: course-deck(title: [Dati e grafici])
+#roadmap(..blocchi, current: 2)
+```
+
+Quando una slide deve comportarsi diversamente sulla carta — un'evidenziazione
+passo passo che la dispensa ridurrebbe all'ultimo passo — `uniud-is-handout`
+vale `true` nella dispensa A4 e `false` sulle slide.
 
 Le attività funzionano già così: compilano il **file aperto** e cercano i font
 in `${workspaceFolder}/fonts`, quindi valgono per qualunque lezione, a
@@ -1146,7 +1276,7 @@ I ruoli sono `title`, `subtitle`, `number`, `body-large`, `body`, `meta`,
 
 | funzione | argomenti |
 | --- | --- |
-| `callout` | `title`, `accent`, `fill` |
+| `callout` | `title`, `accent`, `fill`, `style` |
 | `side-by-side` | `gutter`, `align-items`, `parallel`, + blocchi |
 | `code-box` | `caption`, `numbered`, `highlight`, `steps`, `start`, `fill`, `stroke`, `ink`, `size` |
 | `output-box` | `caption`, `numbered`, `size` |
@@ -1156,6 +1286,14 @@ I ruoli sono `title`, `subtitle`, `number`, `body-large`, `body`, `meta`,
 | `alert-at` | sottoslide, `fill` |
 | `mark-at` | sottoslide, `fill` |
 | `strike-at` | sottoslide |
+| `underline-at` | sottoslide |
+| `credited-figure` | immagine, credito, `caption`, `align` |
+| `flow` | passi, `current`, `height`, `size`, `gutter` |
+| `flow-node` | `accent`, `height`, `size` |
+| `flow-arrow-labelled` | etichetta, `width` |
+| `roadmap` | passi, `current`, `compact`, `height` |
+| `badge` | `style` |
+| `slide-tag` | `style`, `dy` |
 | `dim-at` | sottoslide, `alpha`, `blur` |
 | `dimmed` | `alpha`, `blur`, `fill` |
 
@@ -1173,6 +1311,7 @@ I ruoli sono `title`, `subtitle`, `number`, `body-large`, `body`, `meta`,
 | `interactive` | marca un blocco che esiste solo dal vivo |
 | `uniud-fit-width` | riduce un blocco rigido più largo della colonna |
 | `uniud-str` | una dicitura del tema nella lingua del documento |
+| `uniud-is-handout` | `true` quando si compila la dispensa A4 |
 
 ---
 

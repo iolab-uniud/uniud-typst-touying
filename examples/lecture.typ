@@ -102,6 +102,7 @@ Il costo di merge sort è #alert-at("2")[$Theta(n log n)$] nel caso peggiore,
 al prezzo di #mark-at("3")[$Theta(n)$] di memoria ausiliaria.
 
 Quicksort in place #strike-at("4")[è stabile]: non lo è.
+La parola chiave è #underline-at("5")[stabile].
 
 #dim-at("4-")[Questo dettaglio esce di scena quando arriviamo al confronto.]
 
@@ -291,6 +292,35 @@ anche se il deck è nella misura corporate.
   ],
   caption: [Albero di ricorsione di merge sort su un vettore di 8 elementi.],
 )
+
+== Figura con credito
+
+#credited-figure(
+  media-box(height: 50%)[
+    #align(center + horizon)[#text(fill: uniud-gray)[fotografia d'archivio]]
+  ],
+  [Foto: Archivio storico dell'Ateneo — CC BY 4.0],
+  caption: [Una scheda perforata degli anni Sessanta.],
+)
+
+== Mappa del percorso
+
+#slide-tag(style: "gray")[Approfondimento]
+
+#roadmap(
+  [Divide \ et impera],
+  [Implementazione],
+  [Analisi \ dei costi],
+  [Conclusioni],
+  current: 2,
+)
+
+#v(.8em)
+
+#flow([Dividi], [Risolvi i \ sottoproblemi], [Combina], current: 3)
+
+Le etichette: #badge[Novità] #badge(style: "gray")[Facoltativo]
+#badge(style: "outline")[Ripasso] #badge(style: "solid")[Laboratorio]
 
 // Citazione a tutta pagina.
 #quote-slide(attribution: [Donald E. Knuth, 1974])[

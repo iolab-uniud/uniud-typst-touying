@@ -360,12 +360,17 @@
   // carta non hanno senso: al loro posto resta un segnaposto. `true` le
   // rimette dentro cosi' come stanno sulle slide.
   interactive: false,
+  // L'indice: `outline-slide` diventa l'indice del documento. `false` lo
+  // toglie, titolo compreso — sulle slide resta.
+  outline: true,
   // Lingua delle diciture composte dal tema; `auto` segue `text.lang`.
   lang: auto,
   strings: (:),
   // Codice dell'evento Wooclap del corso, come sulle slide: serve anche qui,
   // perche' `--interactive` rimette in pagina il riquadro di partecipazione.
   wooclap-code: none,
+  // Stile predefinito dei callout, come sulle slide.
+  callout-style: "panel",
   ..args,
   body,
 ) = {
@@ -426,6 +431,7 @@
   set text(lang: lang) if lang != auto
   uniud-set-strings(lang: lang, strings: strings)
   uniud-set-wooclap(wooclap-code)
+  uniud-set-callout-style(callout-style)
 
   _paper.update(g)
   _paper-type.update(t)
@@ -442,6 +448,12 @@
     true
   } else { interactive }
   state("uniud-handout-interactive").update(interactive)
+  // `--input uniud-handout-outline=no` (cioe' `--no-outline` dello script)
+  // ha l'ultima parola sul parametro del tema.
+  let outline = if sys.inputs.at("uniud-handout-outline", default: none) == "no" {
+    false
+  } else { outline }
+  state("uniud-handout-outline").update(outline)
 
   // Ogni sorgente incluso invoca il tema una volta. Le sezioni scorrono nel
   // documento; solo un nuovo deck comincia su una pagina nuova.
@@ -480,6 +492,34 @@
   let f = block(width: 100%, body)
   if caption == none { f } else { figure(f, caption: caption) }
 }
+
+// L'etichetta di slide: sul foglio piu' slide stanno sulla stessa pagina, e un
+// `place` le ammucchierebbe tutte nello stesso angolo. Qui va nel flusso,
+// allineata a destra. `badge` arriva dal tema, che lo disegna.
+#let slide-tag(badge, style: "blue", dy: auto, body) = block(
+  above: .2em,
+  below: .7em,
+  width: 100%,
+  align(right, badge(style: style, body)),
+)
+
+// L'immagine con la riga di credito: sul foglio il credito resta piccolo e
+// grigio, sotto la didascalia se c'e'.
+#let credited-figure(body, credit, caption: none, align: center) = block(
+  width: 100%,
+  breakable: false,
+  above: 1.2em,
+  below: 1.2em,
+  stack(
+    dir: ttb,
+    std.align(align, _fit-page(body)),
+    ..if caption != none {
+      (2mm, std.align(align, text(size: 0.8em, fill: uniud-dark-gray, caption)))
+    },
+    1.5mm,
+    std.align(align, text(size: 7pt, fill: uniud-dark-gray, credit)),
+  ),
+)
 
 // Segnaposto grigio: in pagina non puo' prendersi il 100 % dell'altezza, che
 // sul foglio vuol dire tutta la pagina.
@@ -581,9 +621,11 @@
   )
 }
 
-#let outline-slide(title: none, ..args) = {
-  if title != none { heading(level: 2, title) }
-  outline(title: none, depth: 2)
+#let outline-slide(title: none, ..args) = context {
+  if state("uniud-handout-outline").get() != false {
+    if title != none { heading(level: 2, title) }
+    outline(title: none, depth: 2)
+  }
 }
 
 #let references-slide(title: none, cols: 1, size: 1em, wide: auto, column: auto, span: auto, ..args) = {
@@ -684,6 +726,7 @@
 #let alert-at(..args) = text(fill: uniud-blue, weight: "semibold", args.pos().last())
 #let mark-at(..args) = highlight(fill: uniud-blue.lighten(85%), args.pos().last())
 #let strike-at(..args) = strike(args.pos().last())
+#let underline-at(..args) = underline(args.pos().last())
 #let dim-at(..args) = args.pos().last()
 #let dimmed(..args) = args.pos().last()
 #let focus-list(..args) = args.pos().last()

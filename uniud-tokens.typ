@@ -167,6 +167,38 @@
 }
 
 // -----------------------------------------------------------------------------
+// Modalita' di compilazione
+// -----------------------------------------------------------------------------
+
+/// `true` quando la lezione si compila come dispensa A4
+/// (`--input uniud-handout=a4`). Serve dove una slide conta sui passi —
+/// evidenziazioni progressive, `alternatives` — che la dispensa riduce
+/// all'ultimo: li' si puo' scrivere una versione pensata per la carta.
+#let uniud-is-handout = sys.inputs.at("uniud-handout", default: none) == "a4"
+
+// -----------------------------------------------------------------------------
+// Callout
+// -----------------------------------------------------------------------------
+
+/// Gli stili di `callout`: "panel" filetto in testa e fondo tenue (default),
+/// "rule" solo filetto ed etichetta, "header" etichetta su una testata piena.
+#let uniud-callout-styles = ("panel", "rule", "header")
+
+#let _callout-style = state("uniud-callout-style", "panel")
+
+#let _check-callout-style(style) = assert(
+  style in uniud-callout-styles,
+  message: "callout: stile " + repr(style) + " sconosciuto; ammessi: "
+    + uniud-callout-styles.map(repr).join(", "),
+)
+
+/// Registra lo stile predefinito dei callout. La chiamano i due temi.
+#let uniud-set-callout-style(style) = {
+  _check-callout-style(style)
+  _callout-style.update(style)
+}
+
+// -----------------------------------------------------------------------------
 // Wooclap
 // -----------------------------------------------------------------------------
 
