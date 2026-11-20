@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 - 2026-11-20
+
+- I callout hanno ora un fondo tenue che li fa risaltare, con filetto ed etichetta come prima: è il nuovo stile predefinito `"panel"`, che non ruba spazio alla slide perché riusa la spaziatura già presente intorno al blocco. Con `style: "header"` l'etichetta va in bianco su una testata piena; lo stile precedente resta disponibile come `"rule"` — per il singolo blocco (`style:`) o per tutta la lezione (`callout-style:` nel tema) — e riproduce le slide di prima identiche. `fill: none` toglie il fondo.
+- Nuovi elementi `flow` e `roadmap` per disegnare catene di passi e la mappa del corso, con i mattoni `flow-node`, `flow-arrow` e `flow-arrow-labelled` per le composizioni a mano.
+- Nuovo `credited-figure` per inserire un'immagine con la riga di credito alla fonte.
+- Nuove etichette nei colori del manuale: `badge` e `slide-tag`, che sulle slide compaiono in alto a destra all'altezza del titolo e nella dispensa seguono il flusso del testo.
+- Aggiunti `underline-at`, per sottolineare una porzione di testo, e `uniud-is-handout`, per differenziare il contenuto tra slide e dispensa.
+- Nuova opzione per togliere l'indice dalla dispensa A4: `outline: false` nel tema oppure `./scripts/make-handout.sh --no-outline`. Sulle slide l'indice resta.
+- `#wooclap()` senza codice usa ora quello della lezione in cui si trova: in una dispensa che concatena più lezioni prendeva per tutte il codice dell'ultima.
+
 ## 0.5.0 - 2026-11-19
 
 Le colonne con passi cambiano comportamento, e si vede nei mazzi già scritti: si svolgono una dopo l'altra invece che in parallelo. `parallel: true` ripristina il comportamento precedente.

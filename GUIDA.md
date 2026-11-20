@@ -1024,7 +1024,7 @@ per esempio `common/deck.typ`, che ogni lezione importa:
 
 ```typst
 // common/deck.typ
-#import "@local/uniud-touying:0.5.0": *
+#import "@local/uniud-touying:0.6.0": *
 #let blocchi = ([Python], [Dati e grafici], [Fondamenti di ML])
 #let course-deck(title: none, ..extra) = body => {
   show: uniud-theme.with(
